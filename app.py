@@ -1,11 +1,12 @@
 from flask import Flask
-from flask import g, redirect, request, session
+from flask import g, redirect, request, session, jsonify, abort
 from trello import TrelloClient
 from config import login, pswrd
 from peewee import *
 from create_tables import db, Purchase, Item
 import sender
 import datetime
+import threading
 
 app = Flask(__name__)
 app.config.from_object(__name__)
@@ -62,15 +63,21 @@ def add_new_card(id_purchase):
 
 @app.route('/update')
 def update():
-    sender.main(login, pswrd)
-    return "Sucsecc"
+    # the long running process...
+    t = threading.Thread(target=sender.main, args=(login, pswrd,))
+    t.start()
+    # end the long running process
+    return jsonify({"success": True})
 
 
 @app.route('/tender/<otc_number>')
 def add_page(otc_number):
-    add_new_card(otc_number)
-    return "Sucsecc"
+    # the long running process...
+    t = threading.Thread(target=add_new_card, args=(otc_number,))
+    t.start()
+    # end the long running process
+    return jsonify({"success": True})
 
 if __name__ == "__main__":
     app.debug = True
-    app.run(host='0.0.0.0', port=5000)
+    app.run(threaded=True)
