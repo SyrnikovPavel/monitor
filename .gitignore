@@ -1,0 +1,8 @@
+*.pyc
+*~
+__pycache__
+myvenv
+.DS_Store
+.ipynb_checkpoints
+.idea
+config.py
