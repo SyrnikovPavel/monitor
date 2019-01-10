@@ -1,5 +1,5 @@
 import datetime, time
-import requests
+import requests, json
 from bs4 import BeautifulSoup
 from create_tables import db, Purchase, Item
 
