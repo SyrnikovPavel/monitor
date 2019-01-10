@@ -1,6 +1,7 @@
 from peewee import *
+from config import db_file
 
-db = SqliteDatabase('otc.db')
+db = SqliteDatabase(db_file)
 
 
 class BaseModel(Model):
