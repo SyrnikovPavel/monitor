@@ -17,3 +17,6 @@ def main(login, pswrd):
         purchases.update({purchase: items})
     if len(purchases)>0:
         mail.send_mails(purchases)
+
+if __name__=="__main__":
+    main()
