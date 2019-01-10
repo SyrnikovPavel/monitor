@@ -5,6 +5,7 @@ from create_tables import db, Purchase, Item
 
 
 def save_tender_on_server(data, server="http://syrnikovpavel.pythonanywhere.com/"):
+    data["otc_date_end_app"] = str(data["otc_date_end_app"])
     r = requests.post(str(server) + "/tender/save", data=json.dumps(data))
     time.sleep(1)
     return r.status_code
