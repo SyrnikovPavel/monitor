@@ -1,6 +1,7 @@
 # coding: utf-8
 
 from mailer_me import Mailer
+from config import login, pswrd
 from otc_scrapper import *
 from create_tables import db, Purchase, Item
 
@@ -19,4 +20,4 @@ def main(login, pswrd):
         mail.send_mails(purchases)
 
 if __name__=="__main__":
-    main()
+    main(login, pswrd)
