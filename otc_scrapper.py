@@ -1,4 +1,4 @@
-import datetime
+import datetime, time
 import requests
 from bs4 import BeautifulSoup
 from create_tables import db, Purchase, Item
@@ -6,11 +6,13 @@ from create_tables import db, Purchase, Item
 
 def save_tender_on_server(data, server="http://syrnikovpavel.pythonanywhere.com/"):
     r = requests.post(str(server) + "/tender/save", data=data)
+    time.sleep(1)
     return r.status_code
 
 
 def save_tenderitem_on_server(data, otc_number, server="http://syrnikovpavel.pythonanywhere.com/"):
     r = requests.post(str(server) + "/tenderitem/save/" + str(otc_number), data=data)
+    time.sleep(1)
     return r.status_code
 
 
