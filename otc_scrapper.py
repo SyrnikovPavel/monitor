@@ -1,19 +1,20 @@
-import datetime, time
-import requests, json
+import datetime, time, requests, json
 from bs4 import BeautifulSoup
 from create_tables import db, Purchase, Item
 
 
-def save_tender_on_server(data, server="http://syrnikovpavel.pythonanywhere.com/"):
+def save_tender_on_server(data, server="http://127.0.0.1:5000"):
     data["otc_date_end_app"] = str(data["otc_date_end_app"])
-    r = requests.post(str(server) + "/tender/save", data=json.dumps(data))
+    r = requests.post(str(server) + "/tender/save", json=json.dumps(data))
     time.sleep(1)
+    print("Отправка данных по закупке на сервер")
     return r.status_code
 
 
-def save_tenderitem_on_server(data, otc_number, server="http://syrnikovpavel.pythonanywhere.com/"):
-    r = requests.post(str(server) + "/tenderitem/save/" + str(otc_number), data=json.dumps(data))
+def save_tenderitem_on_server(data, otc_number, server="http://127.0.0.1:5000"):
+    r = requests.post(str(server) + "/tenderitem/save/" + str(otc_number), json=json.dumps(data))
     time.sleep(1)
+    print("Отправка данных по позициям закупки на сервер")
     return r.status_code
 
 
@@ -164,7 +165,6 @@ def save_to_base(info: dict):
             otc_date_end_app=info.get('otc_date_end_app'),
             otc_url=info.get('otc_url')
             )
-        save_tender_on_server(info)
         return 0
     else:
         return 1
@@ -175,6 +175,7 @@ def save_to_base_items(otc_number: int, data: dict):
     Функция получает на вход объект с данными с отс маркета и сохраняет их в базу.
     При успешном сохранении отправляет 0.
     """
+
     purchase = Purchase.get_or_none(Purchase.otc_number == otc_number)
     if purchase is not None:
         for item in data:
@@ -189,7 +190,6 @@ def save_to_base_items(otc_number: int, data: dict):
                     otc_count=item['Count'],
                     otc_sum=item['Sum']
                 )
-    save_tenderitem_on_server(data, otc_number)
     return 0
 
 
@@ -220,10 +220,12 @@ def get_and_save_data(otc_number: int):
         })  # добавление в словари информации о номере закупки и url
         if info['platform'] in need_platform:  # Если платформа из запроса соответствует необходимым
             if save_to_base(info) == 0:  # Если закупку удлось сохранить
+                save_tender_on_server(info)
                 print("Закупка {0}. '{1}' успешно сохранена".format(info['otc_number'], info['otc_name']))
                 data = get_items(otc_number)  # получаем данные по объектам закупки
                 print("Получаем данные по товарам по данной закупке")
                 save_to_base_items(otc_number, data)  # сохраняем их в базу
+                save_tenderitem_on_server(data, otc_number)
                 print("Товары успешно получены и сохранены в базу")
         return 0
     except IndexError:

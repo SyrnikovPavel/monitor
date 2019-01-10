@@ -63,8 +63,8 @@ def add_new_card(id_purchase):
 
 
 def from_request_to_dict(request):
-    data = request.data
-    my_json = data.decode('utf8').replace("'", '"')
+    my_json = request.json
+
     data = json.loads(my_json)
     return data
 
