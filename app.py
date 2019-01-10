@@ -1,9 +1,10 @@
 from flask import Flask
-from flask import g, redirect, request, session, jsonify, abort
+from flask import g, redirect, request, session, jsonify, abort, json
 from trello import TrelloClient
 from config import login, pswrd
 from peewee import *
 from create_tables import db, Purchase, Item
+from otc_scrapper import save_to_base, save_to_base_items
 import sender
 import datetime
 import threading
@@ -61,6 +62,71 @@ def add_new_card(id_purchase):
     return 0
 
 
+def from_request_to_dict(request):
+    data = request.data
+    my_json = data.decode('utf8').replace("'", '"')
+    data = json.loads(my_json)
+    return data
+
+
+@app.route('/tenderitem/save/<int:otc_id>', methods=['GET', 'POST'])
+def tender_item_save(otc_id):
+    """
+    Get JSON in format
+    [
+      {
+        'Count': 2.0,
+        'Id': 802568,
+        'Name': 'Тумба под аппаратуру 800х400х600',
+        'Okpd2Code': '31.01.12.150',
+        'Okpd2Name': 'Тумбы офисные деревянные',
+        'OkpdCode': '',
+        'Price': 1950.0,
+        'PriceHasValue': True,
+        'Sum': 3900.0,
+        'Unit': 'ШТ',
+        'UnitCode': '796'
+      },
+      {
+        'Count': 2.0,
+        'Id': 802568,
+        'Name': 'Тумба под аппаратуру 800х400х600',
+        'Okpd2Code': '31.01.12.150',
+        'Okpd2Name': 'Тумбы офисные деревянные',
+        'OkpdCode': '',
+        'Price': 1950.0,
+        'PriceHasValue': True,
+        'Sum': 3900.0,
+        'Unit': 'ШТ',
+        'UnitCode': '796'
+      }
+    ]
+
+    """
+    data = from_request_to_dict(request)
+    save_to_base_items(otc_id, data)
+    return "Sucsess"
+
+
+@app.route('/tender/save', methods=['GET', 'POST'])
+def tender_save():
+    """
+    Get JSON in format
+    {
+        'otc_customer': 'name_customer',
+        'otc_date_end_app': data,
+        'otc_name': 'name_zakup',
+        'otc_number': numer_zakup,
+        'otc_price': price_zakup,
+        'otc_url': 'url_zakup',
+        'platform': 'platform_zakup'
+    }
+    """
+    data = from_request_to_dict(request)
+    save_to_base(data)
+    return "Sucsess"
+
+
 @app.route('/update')
 def update():
     # the long running process...
@@ -72,12 +138,11 @@ def update():
 
 @app.route('/tender/<otc_number>')
 def add_page(otc_number):
-    # the long running process...
-    t = threading.Thread(target=add_new_card, args=(otc_number,))
-    t.start()
-    # end the long running process
-    return jsonify({"success": True})
+    add_new_card(otc_number)
+    return "Sucsecc"
+
 
 if __name__ == "__main__":
+
     app.debug = True
     app.run(threaded=True)
