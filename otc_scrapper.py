@@ -4,6 +4,16 @@ from bs4 import BeautifulSoup
 from create_tables import db, Purchase, Item
 
 
+def save_tender_on_server(data, server="http://syrnikovpavel.pythonanywhere.com/"):
+    r = requests.post(str(server) + "/tender/save", data=data)
+    return r.status_code
+
+
+def save_tenderitem_on_server(data, otc_number, server="http://syrnikovpavel.pythonanywhere.com/"):
+    r = requests.post(str(server) + "/tenderitem/save/" + str(otc_number), data=data)
+    return r.status_code
+
+
 def merge_two_dicts(x, y):
     """
     Функция для объединения двух словарей
@@ -151,6 +161,7 @@ def save_to_base(info: dict):
             otc_date_end_app=info.get('otc_date_end_app'),
             otc_url=info.get('otc_url')
             )
+        save_tender_on_server(info)
         return 0
     else:
         return 1
@@ -175,6 +186,7 @@ def save_to_base_items(otc_number: int, data: dict):
                     otc_count=item['Count'],
                     otc_sum=item['Sum']
                 )
+    save_tenderitem_on_server(data, otc_number)
     return 0
 
 
