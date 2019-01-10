@@ -1,5 +1,5 @@
 from flask import Flask
-from flask import g, redirect, request, session, json
+from flask import g, redirect, request, session, jsonify, abort, json
 from trello import TrelloClient
 from config import login, pswrd
 from peewee import *
@@ -7,6 +7,7 @@ from create_tables import db, Purchase, Item
 from otc_scrapper import save_to_base, save_to_base_items
 import sender
 import datetime
+import threading
 
 app = Flask(__name__)
 app.config.from_object(__name__)
@@ -128,8 +129,11 @@ def tender_save():
 
 @app.route('/update')
 def update():
-    sender.main(login, pswrd)
-    return "Sucsecc"
+    # the long running process...
+    t = threading.Thread(target=sender.main, args=(login, pswrd,))
+    t.start()
+    # end the long running process
+    return jsonify({"success": True})
 
 
 @app.route('/tender/<otc_number>')
@@ -139,5 +143,6 @@ def add_page(otc_number):
 
 
 if __name__ == "__main__":
+
     app.debug = True
-    app.run(host='0.0.0.0', port=5000)
+    app.run(threaded=True)
