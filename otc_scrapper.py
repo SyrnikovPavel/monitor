@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 from create_tables import db, Purchase, Item
 
 
-def save_tender_on_server(data, server="http://127.0.0.1:5000"):
+def save_tender_on_server(data, server="http://syrnikovpavel.pythonanywhere.com"):
     data["otc_date_end_app"] = str(data["otc_date_end_app"])
     r = requests.post(str(server) + "/tender/save", json=json.dumps(data))
     time.sleep(1)
@@ -11,7 +11,7 @@ def save_tender_on_server(data, server="http://127.0.0.1:5000"):
     return r.status_code
 
 
-def save_tenderitem_on_server(data, otc_number, server="http://127.0.0.1:5000"):
+def save_tenderitem_on_server(data, otc_number, server="http://syrnikovpavel.pythonanywhere.com"):
     r = requests.post(str(server) + "/tenderitem/save/" + str(otc_number), json=json.dumps(data))
     time.sleep(1)
     print("Отправка данных по позициям закупки на сервер")
