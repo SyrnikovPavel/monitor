@@ -254,21 +254,28 @@ def get_information(otc_number: int):
         soup = get_and_save_data(otc_number)  # получить и сохранить данные о закупке
         otc_number += 1  # увеличить номер закупки на 1
         if soup != 0:  # если возникла ошибка, скорее всего закончился список тендеров
-            if soup.find("h4", {'class': 'text-center'})\
-                    .getText() == " Закупка не найдена.  Документа не существует, либо у вас нет прав на просмотр. ":
-                otc_number += 1  # если так и есть проверяем следующую закупку, вдруг просто урл битый
-                otc_url = url_pattern.format(otc_number)
-                r = requests.get(otc_url)  # отправляем запрос
-                soup = BeautifulSoup(r.content, 'lxml')  # парсим страницу
+            try:
                 if soup.find("h4", {'class': 'text-center'})\
                         .getText() == " Закупка не найдена.  Документа не существует, либо у вас нет прав на просмотр. ":
-                    last_otc_number = otc_number - 2  # если действительно нет закупки, то это последний номер закупки
-                    end_bool = False  # конец цикла
-                    print("Последний действующий номер ОТС {0}".format(last_otc_number))
+                    otc_number += 1  # если так и есть проверяем следующую закупку, вдруг просто урл битый
+                    otc_url = url_pattern.format(otc_number)
+                    r = requests.get(otc_url)  # отправляем запрос
+                    soup = BeautifulSoup(r.content, 'lxml')  # парсим страницу
+                    if soup.find("h4", {'class': 'text-center'})\
+                            .getText() == " Закупка не найдена.  Документа не существует, либо у вас нет прав на просмотр. ":
+                        last_otc_number = otc_number - 2  # если действительно нет закупки, то это последний номер закупки
+                        end_bool = False  # конец цикла
+                        print("Последний действующий номер ОТС {0}".format(last_otc_number))
+            except AttributeError: 
+                last_otc_number = otc_number - 1 # если действительно нет закупки, то это последний номер закупки
+                end_bool = False  # конец цикла
+                print("Последний действующий номер ОТС {0}".format(last_otc_number))
+                return last_otc_number
         elif soup == 1:
             last_otc_number = otc_number - 1 # если действительно нет закупки, то это последний номер закупки
             end_bool = False  # конец цикла
             print("Последний действующий номер ОТС {0}".format(last_otc_number))
+            return last_otc_number
     return last_otc_number
 
 
