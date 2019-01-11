@@ -17,17 +17,73 @@ class Mailer:
         """
 
         mail = """
+            <!DOCTYPE html>
+            <html lang="ru">
+            <head>
+                <meta charset="UTF-8">
+                <title>Новые закупки</title>
+                <style type="text/css">
+                    .all_items{
+                       margin: 2%;
+                    }
+                    .one_item{
+                      display: grid;
+                      grid-auto-rows: auto auto auto auto;
+                      margin-bottom: 3%;
+                    }
+                    .header{
+                      font-weight: bold;
+                    }
+                    .header a{
+                      text-decoration: none;
+                    }
+                    .main_info{
+                      display: grid;
+                      grid-template-rows: auto;
+                      grid-template-columns: auto auto auto;
+                    }
+                    .value{
+                      font-weight: bold;
+                    }
+                    .items{
+                      display: grid;
+                      grid-template-columns: repeat(4, 1fr);
+                      border-top: 1px solid black;
+                      border-right: 1px solid black;
+                    }
+                    .items > div {
+                        padding: 8px 4px;
+                        border-left: 1px solid black;
+                        border-bottom: 1px solid black;
+                    }
+                    .table_header{
+                      font-weight: bold;
+                    }
+
+                    .trello{
+                      margin-top: 0.5%;
+                    }
+                </style>
+            </head>
+            <body>
             Добрый день!<br/>
-            Высылаю новые закупки.<br/><br/>
+            Высылаю новые закупки<br/>
+            <div class="all_items">
 
         """
         for purchase, items in purchases.items():
             mail += """
-            <b> Закупка {otc_number}. {otc_name} </b><br/>
-            Срок окончания подачи заявки: <b> {otc_date_end_app} </b><br/>
-            Сумма заявки: <b> {otc_price:0,.2f} </b><br/>
-            <small> Заказчик:  {otc_customer} </small><br/>
-            <a href="{otc_url}"> Перейти к закупке </a><br/>
+            <div class="one_item">
+            <div class="header">
+                <a href="{otc_url}"">
+                    Закупка {otc_number}. {otc_name}
+                </a>
+            </div>
+            <div class="main_info">
+                <div class="date">Срок окончания подачи заявки: <div class="value"> {otc_date_end_app}</div></div>
+                <div class="amount">Сумма заявки: <div class="value"> {otc_price:0,.2f}</div></div>
+                <div class="customer">Заказчик: <div class="value"> {otc_customer} </div></div>
+            </div>
             """.format(
                 otc_number=purchase.otc_number,
                 otc_name=purchase.otc_name,
@@ -37,29 +93,30 @@ class Mailer:
                 otc_url=purchase.otc_url,
             )
             mail += """
-                    <table>
-                        <tr>
-                            <th> Наименование </th>
-                            <th> Цена </th>
-                            <th> Количество </th>
-                            <th> Сумма </th>
-                        </tr>
+                    <div class="items">
+                        <div class="table_header">Наименование	</div>
+                        <div class="table_header">Цена	</div>
+                        <div class="table_header">Количество </div>
+                        <div class="table_header">Сумма </div>
                     """
             for item in items:
                 mail += """
-                        <tr>
-                            <td> {otc_name} </td>
-                            <td> <b>{otc_price:0,.2f}</b> </td>
-                            <td> {otc_count} </td>
-                            <td> <b>{otc_sum:0,.2f}</b> </td>
-                        </tr>
-                        """.format(
+                        <div class="table_item">{otc_name}</div>
+                        <div class="table_item">{otc_price:0,.2f}</div>
+                        <div class="table_item">{otc_count}</div>
+                        <div class="table_item">{otc_sum:0,.2f}</div>
+                """.format(
                     otc_name=item.otc_name,
                     otc_price=item.otc_price,
                     otc_count=item.otc_count,
                     otc_sum=item.otc_sum,
                 )
-            mail += """</table><br/><br/>"""
+            mail += """
+                </div>
+                <div class="trello"><a href="syrnikovpavel.pythonanywhere.com/tender/{otc_number}">Добавить в трелло</a></div>
+            </div>""".format(
+                otc_number=purchase.otc_number,
+            )
             purchase.send = True
             purchase.save()
         return mail
