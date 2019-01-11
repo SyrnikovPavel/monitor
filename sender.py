@@ -8,7 +8,7 @@ from create_tables import db, Purchase, Item
 
 def main(login, pswrd):
     print("Создаем объект мэйлер для рассылки")
-    mail = Mailer(login=login, pswrd=pswrd, list_emails=['SyrnikovPavel@gmail.com', ])
+    mail = Mailer(login=login, pswrd=pswrd, list_emails=['SyrnikovPavel@gmail.com', 'sursmirnav78@mail.ru'])
     print("Запускаем функцию обновления")
     download_and_save_to_base(db)
     print("Забираем из базы неотправленные закупки ")

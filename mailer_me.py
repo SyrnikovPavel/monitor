@@ -93,18 +93,22 @@ class Mailer:
                 otc_url=purchase.otc_url,
             )
             mail += """
-                    <div class="items">
-                        <div class="table_header">Наименование	</div>
-                        <div class="table_header">Цена	</div>
-                        <div class="table_header">Количество </div>
-                        <div class="table_header">Сумма </div>
+                    <table class="items">
+                        <tr>
+                            <th class="table_header">Наименование	</th>
+                            <th class="table_header">Цена	</th>
+                            <th class="table_header">Количество </th>
+                            <th class="table_header">Сумма </th>
+                        </tr>
                     """
             for item in items:
                 mail += """
-                        <div class="table_item">{otc_name}</div>
-                        <div class="table_item">{otc_price:0,.2f}</div>
-                        <div class="table_item">{otc_count}</div>
-                        <div class="table_item">{otc_sum:0,.2f}</div>
+                <tr>
+                        <td class="table_item">{otc_name}</td>
+                        <td class="table_item">{otc_price:0,.2f}</td>
+                        <td class="table_item">{otc_count}</td>
+                        <td class="table_item">{otc_sum:0,.2f}</td>
+                </tr>
                 """.format(
                     otc_name=item.otc_name,
                     otc_price=item.otc_price,
@@ -112,7 +116,7 @@ class Mailer:
                     otc_sum=item.otc_sum,
                 )
             mail += """
-                </div>
+                </table>
                 <div class="trello"><a href="syrnikovpavel.pythonanywhere.com/tender/{otc_number}">Добавить в трелло</a></div>
             </div>""".format(
                 otc_number=purchase.otc_number,
