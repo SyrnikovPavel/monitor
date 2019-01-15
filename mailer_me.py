@@ -48,13 +48,11 @@ class Mailer:
                     .items{
                       display: grid;
                       grid-template-columns: repeat(4, 1fr);
-                      border-top: 1px solid black;
-                      border-right: 1px solid black;
+                      border: 1px solid black;
                     }
                     .items > div {
                         padding: 8px 4px;
-                        border-left: 1px solid black;
-                        border-bottom: 1px solid black;
+                         border: 1px solid black;
                     }
                     .table_header{
                       font-weight: bold;
