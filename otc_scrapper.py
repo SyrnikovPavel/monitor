@@ -202,6 +202,7 @@ def get_and_save_data(otc_number: int):
         # константные переменные
         need_platform = [
             "OTC-market / Секция Тюменская область",
+            "OTC-market / Секция Тюмень",
         ]  # переменная для хранения рассматриваемых площадок для закупок
 
         url_pattern = "https://market.otc.ru/ProductRequestGroup/Index/{0}"  # паттерн для создания url
@@ -244,6 +245,7 @@ def get_information(otc_number: int):
     last_otc_number = otc_number
     need_platform = [
         "OTC-market / Секция Тюменская область",
+        "OTC-market / Секция Тюмень",
     ]  # переменная для хранения рассматриваемых площадок для закупок
     url_pattern = "https://market.otc.ru/ProductRequestGroup/Index/{0}"  # паттерн для создания url
 
