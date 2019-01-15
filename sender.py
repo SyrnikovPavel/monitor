@@ -18,6 +18,8 @@ def main(login, pswrd):
         purchases.update({purchase: items})
     if len(purchases)>0:
         mail.send_mails(purchases)
+    else:
+        mail.send_email('Новых закупок нет', 'SyrnikovPavel@gmail.com')
 
 if __name__=="__main__":
     main(login, pswrd)
