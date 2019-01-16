@@ -1,4 +1,4 @@
-import datetime, time, requests, json
+import datetime, time, requests, json, traceback
 from bs4 import BeautifulSoup
 from create_tables import db, Purchase, Item
 
@@ -96,9 +96,10 @@ def get_main_info(soup: BeautifulSoup):
         key = tr.find_all('td')[0].getText().replace(' ', '')
         value = tr.find_all('td')[1].getText().replace("\xa0", "").replace(",", ".").replace(
             '\r', '').replace('\n', '').replace('  ', '').replace('(Все закупки организации)', '').replace(' руб.', '')
-        if value[0] == " ":
-            value = value[1:]
-        info.update({key: value})
+        if value is not None and value != "":
+            if value[0] == " ":
+                value = value[1:]
+            info.update({key: value})
 
     info = {
         "platform": info['Площадка'],
@@ -121,6 +122,7 @@ def get_date_info(soup: BeautifulSoup):
         key = tr.find_all('td')[0].getText().replace(' ', '')
         value = tr.find_all('td')[1].getText().replace("\xa0", "").replace(",", ".").replace(
             '\r', '').replace('\n', '').replace('  ', '').replace('(Все закупки организации)', '').replace(' руб.', '')
+        
         if value != "":
             if value[0] == " ":
                 value = value[1:]
@@ -209,8 +211,10 @@ def get_and_save_data(otc_number: int):
 
         # основное тело функции
         otc_url = url_pattern.format(otc_number)  # создание url
+        print("="*20)
         print(otc_url)
         r = requests.get(otc_url)  # запрос на сервер
+        print(r.status_code)
         if r.status_code != 500:
             soup = BeautifulSoup(r.content, 'lxml')  # распарсивание страницы
             main_info = get_main_info(soup)  # получение основных данных о закупке
@@ -232,7 +236,9 @@ def get_and_save_data(otc_number: int):
             return 0
         else:
             return 1
-    except IndexError:
+    except IndexError as err:
+        print(err)
+        traceback.print_exc()
         return soup
 
 
