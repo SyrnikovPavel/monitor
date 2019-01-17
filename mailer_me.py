@@ -115,7 +115,7 @@ class Mailer:
                 )
             mail += """
                 </table>
-                <div class="trello"><a href="syrnikovpavel.pythonanywhere.com/tender/{otc_number}">Добавить в трелло</a></div>
+                <div class="trello"><a href="https://syrnikovpavel.pythonanywhere.com/tender/{otc_number}">Добавить в трелло</a></div>
             </div>""".format(
                 otc_number=purchase.otc_number,
             )
