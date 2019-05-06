@@ -1,6 +1,7 @@
 import datetime, time, requests, json, traceback
 from bs4 import BeautifulSoup
 from create_tables import db, Purchase, Item
+import peewee
 
 
 def save_tender_on_server(data, server="http://syrnikovpavel.pythonanywhere.com"):
@@ -181,6 +182,10 @@ def save_to_base_items(otc_number: int, data: dict):
     purchase = Purchase.get_or_none(Purchase.otc_number == otc_number)
     if purchase is not None:
         for item in data:
+            if item.get('Okpd2Code') is None:
+                item['Okpd2Code']='99.99.99.99'
+            if item.get('Okpd2Name') is None:
+                item['Okpd2Name']='other'    
             if Item.get_or_none(Item.otc_id == item['Id']) is None:
                 item_base = Item.create(
                     otc_number=purchase,
@@ -292,9 +297,13 @@ def download_and_save_to_base(db):
     Функция добывает и сохраняет данные в базу.
     """
     print("Подключаемся к базе")
-    #  db.connect()
+    try:
+        db.connect()
+    except peewee.OperationalError:
+        pass
     print("Получаем последний номер закупки")
     otc_number = Purchase.select().order_by(Purchase.id.desc()).get().otc_number
+    #otc_number = 406620
     print("Добавляем информацию по закупкам")
     last_number = get_information(otc_number)
     return 0
