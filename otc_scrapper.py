@@ -222,25 +222,421 @@ def get_and_save_data(otc_number: int):
         print(r.status_code)
         if r.status_code != 500:
             soup = BeautifulSoup(r.content, 'lxml')  # распарсивание страницы
-            main_info = get_main_info(soup)  # получение основных данных о закупке
-            date_info = get_date_info(soup)  # получение информации о датах закупки
-            info = merge_two_dicts(main_info, date_info)  # объединение двух словарей
-            info.update({
-                'otc_number': otc_number,
-                'otc_url': otc_url
-            })  # добавление в словари информации о номере закупки и url
-            if info['platform'] in need_platform:  # Если платформа из запроса соответствует необходимым
-                if save_to_base(info) == 0:  # Если закупку удлось сохранить
-                    save_tender_on_server(info)
-                    print("Закупка {0}. '{1}' успешно сохранена".format(info['otc_number'], info['otc_name']))
-                    data = get_items(otc_number)  # получаем данные по объектам закупки
-                    print("Получаем данные по товарам по данной закупке")
-                    save_to_base_items(otc_number, data)  # сохраняем их в базу
-                    save_tenderitem_on_server(data, otc_number)
-                    print("Товары успешно получены и сохранены в базу")
-            return 0
+            if soup.find("h4", {'class': 'text-center'}) is None:
+                main_info = get_main_info(soup)  # получение основных данных о закупке
+                date_info = get_date_info(soup)  # получение информации о датах закупки
+                info = merge_two_dicts(main_info, date_info)  # объединение двух словарей
+                info.update({
+                    'otc_number': otc_number,
+                    'otc_url': otc_url
+                })  # добавление в словари информации о номере закупки и url
+                if info['platform'] in need_platform:  # Если платформа из запроса соответствует необходимым
+                    if save_to_base(info) == 0:  # Если закупку удлось сохранить
+                        save_tender_on_server(info)
+                        print("Закупка {0}. '{1}' успешно сохранена".format(info['otc_number'], info['otc_name']))
+                        data = get_items(otc_number)  # получаем данные по объектам закупки
+                        print("Получаем данные по товарам по данной закупке")
+                        save_to_base_items(otc_number, data)  # сохраняем их в базу
+                        save_tenderitem_on_server(data, otc_number)
+                        print("Товары успешно получены и сохранены в базу")
+                return 0
+            else:
+                otc_url = url_pattern.format(otc_number+1)  # создание url
+                print("="*20)
+                print(otc_url)
+                r = requests.get(otc_url)  # запрос на сервер
+                print(r.status_code)
+                if r.status_code != 500:
+                    soup = BeautifulSoup(r.content, 'lxml')  # распарсивание страницы
+                    if soup.find("h4", {'class': 'text-center'}) is None:
+                        main_info = get_main_info(soup)  # получение основных данных о закупке
+                        date_info = get_date_info(soup)  # получение информации о датах закупки
+                        info = merge_two_dicts(main_info, date_info)  # объединение двух словарей
+                        info.update({
+                            'otc_number': otc_number,
+                            'otc_url': otc_url
+                        })  # добавление в словари информации о номере закупки и url
+                        if info['platform'] in need_platform:  # Если платформа из запроса соответствует необходимым
+                            if save_to_base(info) == 0:  # Если закупку удлось сохранить
+                                save_tender_on_server(info)
+                                print("Закупка {0}. '{1}' успешно сохранена".format(info['otc_number'], info['otc_name']))
+                                data = get_items(otc_number)  # получаем данные по объектам закупки
+                                print("Получаем данные по товарам по данной закупке")
+                                save_to_base_items(otc_number, data)  # сохраняем их в базу
+                                save_tenderitem_on_server(data, otc_number)
+                                print("Товары успешно получены и сохранены в базу")
+                        return 0
+                    else:
+                        otc_url = url_pattern.format(otc_number+2)  # создание url
+                        print("="*20)
+                        print(otc_url)
+                        r = requests.get(otc_url)  # запрос на сервер
+                        print(r.status_code)
+                        if r.status_code != 500:
+                            soup = BeautifulSoup(r.content, 'lxml')  # распарсивание страницы
+                            if soup.find("h4", {'class': 'text-center'}) is None:
+                                main_info = get_main_info(soup)  # получение основных данных о закупке
+                                date_info = get_date_info(soup)  # получение информации о датах закупки
+                                info = merge_two_dicts(main_info, date_info)  # объединение двух словарей
+                                info.update({
+                                    'otc_number': otc_number,
+                                    'otc_url': otc_url
+                                })  # добавление в словари информации о номере закупки и url
+                                if info['platform'] in need_platform:  # Если платформа из запроса соответствует необходимым
+                                    if save_to_base(info) == 0:  # Если закупку удлось сохранить
+                                        save_tender_on_server(info)
+                                        print("Закупка {0}. '{1}' успешно сохранена".format(info['otc_number'], info['otc_name']))
+                                        data = get_items(otc_number)  # получаем данные по объектам закупки
+                                        print("Получаем данные по товарам по данной закупке")
+                                        save_to_base_items(otc_number, data)  # сохраняем их в базу
+                                        save_tenderitem_on_server(data, otc_number)
+                                        print("Товары успешно получены и сохранены в базу")
+                                return 0
+                            else:
+                                otc_url = url_pattern.format(otc_number+3)  # создание url
+                                print("="*20)
+                                print(otc_url)
+                                r = requests.get(otc_url)  # запрос на сервер
+                                print(r.status_code)
+                                if r.status_code != 500:
+                                    soup = BeautifulSoup(r.content, 'lxml')  # распарсивание страницы
+                                    if soup.find("h4", {'class': 'text-center'}) is None:
+                                        main_info = get_main_info(soup)  # получение основных данных о закупке
+                                        date_info = get_date_info(soup)  # получение информации о датах закупки
+                                        info = merge_two_dicts(main_info, date_info)  # объединение двух словарей
+                                        info.update({
+                                            'otc_number': otc_number,
+                                            'otc_url': otc_url
+                                        })  # добавление в словари информации о номере закупки и url
+                                        if info['platform'] in need_platform:  # Если платформа из запроса соответствует необходимым
+                                            if save_to_base(info) == 0:  # Если закупку удлось сохранить
+                                                save_tender_on_server(info)
+                                                print("Закупка {0}. '{1}' успешно сохранена".format(info['otc_number'], info['otc_name']))
+                                                data = get_items(otc_number)  # получаем данные по объектам закупки
+                                                print("Получаем данные по товарам по данной закупке")
+                                                save_to_base_items(otc_number, data)  # сохраняем их в базу
+                                                save_tenderitem_on_server(data, otc_number)
+                                                print("Товары успешно получены и сохранены в базу")
+                                        return 0
+                                    else:
+                                        otc_url = url_pattern.format(otc_number+4)  # создание url
+                                        print("="*20)
+                                        print(otc_url)
+                                        r = requests.get(otc_url)  # запрос на сервер
+                                        print(r.status_code)
+                                        if r.status_code != 500:
+                                            soup = BeautifulSoup(r.content, 'lxml')  # распарсивание страницы
+                                            if soup.find("h4", {'class': 'text-center'}) is None:
+                                                main_info = get_main_info(soup)  # получение основных данных о закупке
+                                                date_info = get_date_info(soup)  # получение информации о датах закупки
+                                                info = merge_two_dicts(main_info, date_info)  # объединение двух словарей
+                                                info.update({
+                                                    'otc_number': otc_number,
+                                                    'otc_url': otc_url
+                                                })  # добавление в словари информации о номере закупки и url
+                                                if info['platform'] in need_platform:  # Если платформа из запроса соответствует необходимым
+                                                    if save_to_base(info) == 0:  # Если закупку удлось сохранить
+                                                        save_tender_on_server(info)
+                                                        print("Закупка {0}. '{1}' успешно сохранена".format(info['otc_number'], info['otc_name']))
+                                                        data = get_items(otc_number)  # получаем данные по объектам закупки
+                                                        print("Получаем данные по товарам по данной закупке")
+                                                        save_to_base_items(otc_number, data)  # сохраняем их в базу
+                                                        save_tenderitem_on_server(data, otc_number)
+                                                        print("Товары успешно получены и сохранены в базу")
+                                                return 0
+                                            else:
+                                                otc_url = url_pattern.format(otc_number+5)  # создание url
+                                                print("="*20)
+                                                print(otc_url)
+                                                r = requests.get(otc_url)  # запрос на сервер
+                                                print(r.status_code)
+                                                if r.status_code != 500:
+                                                    soup = BeautifulSoup(r.content, 'lxml')  # распарсивание страницы
+                                                    if soup.find("h4", {'class': 'text-center'}) is None:
+                                                        main_info = get_main_info(soup)  # получение основных данных о закупке
+                                                        date_info = get_date_info(soup)  # получение информации о датах закупки
+                                                        info = merge_two_dicts(main_info, date_info)  # объединение двух словарей
+                                                        info.update({
+                                                            'otc_number': otc_number,
+                                                            'otc_url': otc_url
+                                                        })  # добавление в словари информации о номере закупки и url
+                                                        if info['platform'] in need_platform:  # Если платформа из запроса соответствует необходимым
+                                                            if save_to_base(info) == 0:  # Если закупку удлось сохранить
+                                                                save_tender_on_server(info)
+                                                                print("Закупка {0}. '{1}' успешно сохранена".format(info['otc_number'], info['otc_name']))
+                                                                data = get_items(otc_number)  # получаем данные по объектам закупки
+                                                                print("Получаем данные по товарам по данной закупке")
+                                                                save_to_base_items(otc_number, data)  # сохраняем их в базу
+                                                                save_tenderitem_on_server(data, otc_number)
+                                                                print("Товары успешно получены и сохранены в базу")
+                                                        return 0
+                                                    else:
+                                                        otc_url = url_pattern.format(otc_number+6)  # создание url
+                                                        print("="*20)
+                                                        print(otc_url)
+                                                        r = requests.get(otc_url)  # запрос на сервер
+                                                        print(r.status_code)
+                                                        if r.status_code != 500:
+                                                            soup = BeautifulSoup(r.content, 'lxml')  # распарсивание страницы
+                                                            if soup.find("h4", {'class': 'text-center'}) is None:
+                                                                main_info = get_main_info(soup)  # получение основных данных о закупке
+                                                                date_info = get_date_info(soup)  # получение информации о датах закупки
+                                                                info = merge_two_dicts(main_info, date_info)  # объединение двух словарей
+                                                                info.update({
+                                                                    'otc_number': otc_number,
+                                                                    'otc_url': otc_url
+                                                                })  # добавление в словари информации о номере закупки и url
+                                                                if info['platform'] in need_platform:  # Если платформа из запроса соответствует необходимым
+                                                                    if save_to_base(info) == 0:  # Если закупку удлось сохранить
+                                                                        save_tender_on_server(info)
+                                                                        print("Закупка {0}. '{1}' успешно сохранена".format(info['otc_number'], info['otc_name']))
+                                                                        data = get_items(otc_number)  # получаем данные по объектам закупки
+                                                                        print("Получаем данные по товарам по данной закупке")
+                                                                        save_to_base_items(otc_number, data)  # сохраняем их в базу
+                                                                        save_tenderitem_on_server(data, otc_number)
+                                                                        print("Товары успешно получены и сохранены в базу")
+                                                                return 0
+                                                            else:
+                                                                otc_url = url_pattern.format(otc_number+7)  # создание url
+                                                                print("="*20)
+                                                                print(otc_url)
+                                                                r = requests.get(otc_url)  # запрос на сервер
+                                                                print(r.status_code)
+                                                                if r.status_code != 500:
+                                                                    soup = BeautifulSoup(r.content, 'lxml')  # распарсивание страницы
+                                                                    if soup.find("h4", {'class': 'text-center'}) is None:
+                                                                        main_info = get_main_info(soup)  # получение основных данных о закупке
+                                                                        date_info = get_date_info(soup)  # получение информации о датах закупки
+                                                                        info = merge_two_dicts(main_info, date_info)  # объединение двух словарей
+                                                                        info.update({
+                                                                            'otc_number': otc_number,
+                                                                            'otc_url': otc_url
+                                                                        })  # добавление в словари информации о номере закупки и url
+                                                                        if info['platform'] in need_platform:  # Если платформа из запроса соответствует необходимым
+                                                                            if save_to_base(info) == 0:  # Если закупку удлось сохранить
+                                                                                save_tender_on_server(info)
+                                                                                print("Закупка {0}. '{1}' успешно сохранена".format(info['otc_number'], info['otc_name']))
+                                                                                data = get_items(otc_number)  # получаем данные по объектам закупки
+                                                                                print("Получаем данные по товарам по данной закупке")
+                                                                                save_to_base_items(otc_number, data)  # сохраняем их в базу
+                                                                                save_tenderitem_on_server(data, otc_number)
+                                                                                print("Товары успешно получены и сохранены в базу")
+                                                                        return 0
+                                                                    else:
+                                                                        otc_url = url_pattern.format(otc_number+8)  # создание url
+                                                                        print("="*20)
+                                                                        print(otc_url)
+                                                                        r = requests.get(otc_url)  # запрос на сервер
+                                                                        print(r.status_code)
+                                                                        if r.status_code != 500:
+                                                                            soup = BeautifulSoup(r.content, 'lxml')  # распарсивание страницы
+                                                                            if soup.find("h4", {'class': 'text-center'}) is None:
+                                                                                main_info = get_main_info(soup)  # получение основных данных о закупке
+                                                                                date_info = get_date_info(soup)  # получение информации о датах закупки
+                                                                                info = merge_two_dicts(main_info, date_info)  # объединение двух словарей
+                                                                                info.update({
+                                                                                    'otc_number': otc_number,
+                                                                                    'otc_url': otc_url
+                                                                                })  # добавление в словари информации о номере закупки и url
+                                                                                if info['platform'] in need_platform:  # Если платформа из запроса соответствует необходимым
+                                                                                    if save_to_base(info) == 0:  # Если закупку удлось сохранить
+                                                                                        save_tender_on_server(info)
+                                                                                        print("Закупка {0}. '{1}' успешно сохранена".format(info['otc_number'], info['otc_name']))
+                                                                                        data = get_items(otc_number)  # получаем данные по объектам закупки
+                                                                                        print("Получаем данные по товарам по данной закупке")
+                                                                                        save_to_base_items(otc_number, data)  # сохраняем их в базу
+                                                                                        save_tenderitem_on_server(data, otc_number)
+                                                                                        print("Товары успешно получены и сохранены в базу")
+                                                                                return 0
+                                                                            else:
+                                                                                otc_url = url_pattern.format(otc_number+9)  # создание url
+                                                                                print("="*20)
+                                                                                print(otc_url)
+                                                                                r = requests.get(otc_url)  # запрос на сервер
+                                                                                print(r.status_code)
+                                                                                if r.status_code != 500:
+                                                                                    soup = BeautifulSoup(r.content, 'lxml')  # распарсивание страницы
+                                                                                    if soup.find("h4", {'class': 'text-center'}) is None:
+                                                                                        main_info = get_main_info(soup)  # получение основных данных о закупке
+                                                                                        date_info = get_date_info(soup)  # получение информации о датах закупки
+                                                                                        info = merge_two_dicts(main_info, date_info)  # объединение двух словарей
+                                                                                        info.update({
+                                                                                            'otc_number': otc_number,
+                                                                                            'otc_url': otc_url
+                                                                                        })  # добавление в словари информации о номере закупки и url
+                                                                                        if info['platform'] in need_platform:  # Если платформа из запроса соответствует необходимым
+                                                                                            if save_to_base(info) == 0:  # Если закупку удлось сохранить
+                                                                                                save_tender_on_server(info)
+                                                                                                print("Закупка {0}. '{1}' успешно сохранена".format(info['otc_number'], info['otc_name']))
+                                                                                                data = get_items(otc_number)  # получаем данные по объектам закупки
+                                                                                                print("Получаем данные по товарам по данной закупке")
+                                                                                                save_to_base_items(otc_number, data)  # сохраняем их в базу
+                                                                                                save_tenderitem_on_server(data, otc_number)
+                                                                                                print("Товары успешно получены и сохранены в базу")
+                                                                                        return 0
+                                                                                    else:
+                                                                                        otc_url = url_pattern.format(otc_number+10)  # создание url
+                                                                                        print("="*20)
+                                                                                        print(otc_url)
+                                                                                        r = requests.get(otc_url)  # запрос на сервер
+                                                                                        print(r.status_code)
+                                                                                        if r.status_code != 500:
+                                                                                            soup = BeautifulSoup(r.content, 'lxml')  # распарсивание страницы
+                                                                                            if soup.find("h4", {'class': 'text-center'}) is None:
+                                                                                                main_info = get_main_info(soup)  # получение основных данных о закупке
+                                                                                                date_info = get_date_info(soup)  # получение информации о датах закупки
+                                                                                                info = merge_two_dicts(main_info, date_info)  # объединение двух словарей
+                                                                                                info.update({
+                                                                                                    'otc_number': otc_number,
+                                                                                                    'otc_url': otc_url
+                                                                                                })  # добавление в словари информации о номере закупки и url
+                                                                                                if info['platform'] in need_platform:  # Если платформа из запроса соответствует необходимым
+                                                                                                    if save_to_base(info) == 0:  # Если закупку удлось сохранить
+                                                                                                        save_tender_on_server(info)
+                                                                                                        print("Закупка {0}. '{1}' успешно сохранена".format(info['otc_number'], info['otc_name']))
+                                                                                                        data = get_items(otc_number)  # получаем данные по объектам закупки
+                                                                                                        print("Получаем данные по товарам по данной закупке")
+                                                                                                        save_to_base_items(otc_number, data)  # сохраняем их в базу
+                                                                                                        save_tenderitem_on_server(data, otc_number)
+                                                                                                        print("Товары успешно получены и сохранены в базу")
+                                                                                                return 0
+                                                                                            else:
+                                                                                                otc_url = url_pattern.format(otc_number+11)  # создание url
+                                                                                                print("="*20)
+                                                                                                print(otc_url)
+                                                                                                r = requests.get(otc_url)  # запрос на сервер
+                                                                                                print(r.status_code)
+                                                                                                if r.status_code != 500:
+                                                                                                    soup = BeautifulSoup(r.content, 'lxml')  # распарсивание страницы
+                                                                                                    if soup.find("h4", {'class': 'text-center'}) is None:
+                                                                                                        main_info = get_main_info(soup)  # получение основных данных о закупке
+                                                                                                        date_info = get_date_info(soup)  # получение информации о датах закупки
+                                                                                                        info = merge_two_dicts(main_info, date_info)  # объединение двух словарей
+                                                                                                        info.update({
+                                                                                                            'otc_number': otc_number,
+                                                                                                            'otc_url': otc_url
+                                                                                                        })  # добавление в словари информации о номере закупки и url
+                                                                                                        if info['platform'] in need_platform:  # Если платформа из запроса соответствует необходимым
+                                                                                                            if save_to_base(info) == 0:  # Если закупку удлось сохранить
+                                                                                                                save_tender_on_server(info)
+                                                                                                                print("Закупка {0}. '{1}' успешно сохранена".format(info['otc_number'], info['otc_name']))
+                                                                                                                data = get_items(otc_number)  # получаем данные по объектам закупки
+                                                                                                                print("Получаем данные по товарам по данной закупке")
+                                                                                                                save_to_base_items(otc_number, data)  # сохраняем их в базу
+                                                                                                                save_tenderitem_on_server(data, otc_number)
+                                                                                                                print("Товары успешно получены и сохранены в базу")
+                                                                                                        return 0
+                                                                                                    else:
+                                                                                                        otc_url = url_pattern.format(otc_number+12)  # создание url
+                                                                                                        print("="*20)
+                                                                                                        print(otc_url)
+                                                                                                        r = requests.get(otc_url)  # запрос на сервер
+                                                                                                        print(r.status_code)
+                                                                                                        if r.status_code != 500:
+                                                                                                            soup = BeautifulSoup(r.content, 'lxml')  # распарсивание страницы
+                                                                                                            if soup.find("h4", {'class': 'text-center'}) is None:
+                                                                                                                main_info = get_main_info(soup)  # получение основных данных о закупке
+                                                                                                                date_info = get_date_info(soup)  # получение информации о датах закупки
+                                                                                                                info = merge_two_dicts(main_info, date_info)  # объединение двух словарей
+                                                                                                                info.update({
+                                                                                                                    'otc_number': otc_number,
+                                                                                                                    'otc_url': otc_url
+                                                                                                                })  # добавление в словари информации о номере закупки и url
+                                                                                                                if info['platform'] in need_platform:  # Если платформа из запроса соответствует необходимым
+                                                                                                                    if save_to_base(info) == 0:  # Если закупку удлось сохранить
+                                                                                                                        save_tender_on_server(info)
+                                                                                                                        print("Закупка {0}. '{1}' успешно сохранена".format(info['otc_number'], info['otc_name']))
+                                                                                                                        data = get_items(otc_number)  # получаем данные по объектам закупки
+                                                                                                                        print("Получаем данные по товарам по данной закупке")
+                                                                                                                        save_to_base_items(otc_number, data)  # сохраняем их в базу
+                                                                                                                        save_tenderitem_on_server(data, otc_number)
+                                                                                                                        print("Товары успешно получены и сохранены в базу")
+                                                                                                                return 0
+                                                                                                            else:
+                                                                                                                otc_url = url_pattern.format(otc_number+13)  # создание url
+                                                                                                                print("="*20)
+                                                                                                                print(otc_url)
+                                                                                                                r = requests.get(otc_url)  # запрос на сервер
+                                                                                                                print(r.status_code)
+                                                                                                                if r.status_code != 500:
+                                                                                                                    soup = BeautifulSoup(r.content, 'lxml')  # распарсивание страницы
+                                                                                                                    if soup.find("h4", {'class': 'text-center'}) is None:
+                                                                                                                        main_info = get_main_info(soup)  # получение основных данных о закупке
+                                                                                                                        date_info = get_date_info(soup)  # получение информации о датах закупки
+                                                                                                                        info = merge_two_dicts(main_info, date_info)  # объединение двух словарей
+                                                                                                                        info.update({
+                                                                                                                            'otc_number': otc_number,
+                                                                                                                            'otc_url': otc_url
+                                                                                                                        })  # добавление в словари информации о номере закупки и url
+                                                                                                                        if info['platform'] in need_platform:  # Если платформа из запроса соответствует необходимым
+                                                                                                                            if save_to_base(info) == 0:  # Если закупку удлось сохранить
+                                                                                                                                save_tender_on_server(info)
+                                                                                                                                print("Закупка {0}. '{1}' успешно сохранена".format(info['otc_number'], info['otc_name']))
+                                                                                                                                data = get_items(otc_number)  # получаем данные по объектам закупки
+                                                                                                                                print("Получаем данные по товарам по данной закупке")
+                                                                                                                                save_to_base_items(otc_number, data)  # сохраняем их в базу
+                                                                                                                                save_tenderitem_on_server(data, otc_number)
+                                                                                                                                print("Товары успешно получены и сохранены в базу")
+                                                                                                                        return 0
+                                                                                                                    else:
+                                                                                                                        return 1
         else:
-            return 1
+            print("Закупка не найдена. Пробуем следующую.")
+            # пробуем еще одну закупку
+            otc_url = url_pattern.format(otc_number+1)  # создание url
+            print("="*20)
+            print(otc_url)
+            r = requests.get(otc_url)  # запрос на сервер
+            print(r.status_code)
+            if r.status_code != 500:
+                soup = BeautifulSoup(r.content, 'lxml')  # распарсивание страницы
+                main_info = get_main_info(soup)  # получение основных данных о закупке
+                date_info = get_date_info(soup)  # получение информации о датах закупки
+                info = merge_two_dicts(main_info, date_info)  # объединение двух словарей
+                info.update({
+                    'otc_number': otc_number,
+                    'otc_url': otc_url
+                })  # добавление в словари информации о номере закупки и url
+                if info['platform'] in need_platform:  # Если платформа из запроса соответствует необходимым
+                    if save_to_base(info) == 0:  # Если закупку удлось сохранить
+                        save_tender_on_server(info)
+                        print("Закупка {0}. '{1}' успешно сохранена".format(info['otc_number'], info['otc_name']))
+                        data = get_items(otc_number)  # получаем данные по объектам закупки
+                        print("Получаем данные по товарам по данной закупке")
+                        save_to_base_items(otc_number, data)  # сохраняем их в базу
+                        save_tenderitem_on_server(data, otc_number)
+                        print("Товары успешно получены и сохранены в базу")
+                return 0
+            else:
+                print("Закупка не найдена. Пробуем следующую.")
+                # пробуем еще одну закупку
+                otc_url = url_pattern.format(otc_number+2)  # создание url
+                print("="*20)
+                print(otc_url)
+                r = requests.get(otc_url)  # запрос на сервер
+                print(r.status_code)
+                if r.status_code != 500:
+                    soup = BeautifulSoup(r.content, 'lxml')  # распарсивание страницы
+                    main_info = get_main_info(soup)  # получение основных данных о закупке
+                    date_info = get_date_info(soup)  # получение информации о датах закупки
+                    info = merge_two_dicts(main_info, date_info)  # объединение двух словарей
+                    info.update({
+                        'otc_number': otc_number,
+                        'otc_url': otc_url
+                    })  # добавление в словари информации о номере закупки и url
+                    if info['platform'] in need_platform:  # Если платформа из запроса соответствует необходимым
+                        if save_to_base(info) == 0:  # Если закупку удлось сохранить
+                            save_tender_on_server(info)
+                            print("Закупка {0}. '{1}' успешно сохранена".format(info['otc_number'], info['otc_name']))
+                            data = get_items(otc_number)  # получаем данные по объектам закупки
+                            print("Получаем данные по товарам по данной закупке")
+                            save_to_base_items(otc_number, data)  # сохраняем их в базу
+                            save_tenderitem_on_server(data, otc_number)
+                            print("Товары успешно получены и сохранены в базу")
+                    return 0
+                else:
+                    print("Закупка не найдена. Конец.")
+                    return 1
     except IndexError as err:
         print(err)
         traceback.print_exc()
@@ -303,7 +699,7 @@ def download_and_save_to_base(db):
         pass
     print("Получаем последний номер закупки")
     otc_number = Purchase.select().order_by(Purchase.id.desc()).get().otc_number
-    #otc_number = 406620
+    #otc_number = 487355
     print("Добавляем информацию по закупкам")
     last_number = get_information(otc_number)
     return 0
