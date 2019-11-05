@@ -58,7 +58,7 @@ def add_new_card(id_purchase):
     members = client.get_board(board_id='5b42f68cfa7e02948429e696').get_members()
     for member in members:
         card.add_member(member)
-    card.set_due(purchase.otc_date_end_app-datetime.timedelta(9/24))
+    card.set_due(purchase.otc_date_end_app-datetime.timedelta(10/24))
     return 0
 
 
