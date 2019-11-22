@@ -699,7 +699,7 @@ def download_and_save_to_base(db):
         pass
     print("Получаем последний номер закупки")
     otc_number = Purchase.select().order_by(Purchase.id.desc()).get().otc_number
-    #otc_number = 487355
+    #otc_number = 502700
     print("Добавляем информацию по закупкам")
     last_number = get_information(otc_number)
     return 0
