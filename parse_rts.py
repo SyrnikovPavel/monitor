@@ -77,28 +77,28 @@ def get_states_rts():
     }
 
 
-    r = requests.post(url="https://zmo-new-webapi.rts-tender.ru/market/api/v1/trades/publicsearch2", headers=headers, json=json_items)
-    time.sleep(2)
-    data = r.json()['data']['items']
+    #r = requests.post(url="https://zmo-new-webapi.rts-tender.ru/market/api/v1/trades/publicsearch2", headers=headers, json=json_items)
+    #time.sleep(2)
+    #data = r.json()['data']['items']
 
-    for item_data in data:
-        state = {
-            'unique_id': str(item_data.get('Id')) + '_rts',
-            'place': 'rts',
-            'id_zak': str(item_data.get('Id')),
-            'name_group_pos':item_data.get('Name'),
-            'organization': item_data.get('CustomerName'),
-            'start_time': datetime.datetime.strptime(item_data.get('PublicationDate'), '%Y-%m-%dT%H:%M:%S'),
-            'end_time': datetime.datetime.strptime(item_data.get('FillingApplicationEndDate'), '%Y-%m-%dT%H:%M:%S'),
-            'created_time': datetime.datetime.strptime(item_data.get('PublicationDate'), '%Y-%m-%dT%H:%M:%S'),
-            'current_status': item_data.get('StateString'),
-            'start_price': item_data.get('Price'),
-            'address': item_data.get('DeliveryKladrRegionName'),
-            'url': 'https://market.rts-tender.ru/zapros/' + str(item_data.get('Id')) + '/request',
-            'send': False, 
-            'add_trello': False,
-        }
-        states.append(state)
+    #for item_data in data:
+    #    state = {
+    #        'unique_id': str(item_data.get('Id')) + '_rts',
+    #        'place': 'rts',
+    #        'id_zak': str(item_data.get('Id')),
+    #        'name_group_pos':item_data.get('Name'),
+    #        'organization': item_data.get('CustomerName'),
+    #        'start_time': datetime.datetime.strptime(item_data.get('PublicationDate'), '%Y-%m-%dT%H:%M:%S'),
+    #        'end_time': datetime.datetime.strptime(item_data.get('FillingApplicationEndDate'), '%Y-%m-%dT%H:%M:%S'),
+    #        'created_time': datetime.datetime.strptime(item_data.get('PublicationDate'), '%Y-%m-%dT%H:%M:%S'),
+    #        'current_status': item_data.get('StateString'),
+    #        'start_price': item_data.get('Price'),
+    #        'address': item_data.get('DeliveryKladrRegionName'),
+    #        'url': 'https://market.rts-tender.ru/zapros/' + str(item_data.get('Id')) + '/request',
+    #        'send': False, 
+    #        'add_trello': False,
+    #    }
+    #    states.append(state)
 
 
     json_items = {
