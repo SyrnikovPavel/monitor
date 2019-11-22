@@ -1,145 +1,91 @@
 from flask import Flask
 from flask import g, redirect, request, session, jsonify, abort, json
 from trello import TrelloClient
-from config import login, pswrd
-from peewee import *
-from create_tables import db, Purchase, Item
-from otc_scrapper import save_to_base, save_to_base_items
-import sender
+from jinja2 import Template
+from config import *
+from tables import *
+from monitor import get_one_tender, update_tenders_in_base
 import datetime
 import threading
+
 
 app = Flask(__name__)
 app.config.from_object(__name__)
 
 
-def form_desc_for_cards(purchase, items):
-    """
-    Функция формирует описание закупки
-    """
-    mail = "Срок окончания подачи заявки: {otc_date_end_app} \
-    \n\nСумма заявки: {otc_price:0,.2f}\n\nЗаказчик:  {otc_customer} \
-    \n\n[Ссылка на закупку]({otc_url})\n\n".format(
-            otc_date_end_app=purchase.otc_date_end_app,
-            otc_price=purchase.otc_price,
-            otc_customer=purchase.otc_customer,
-            otc_url=purchase.otc_url,
-        )
-    mail += "---\n\nОбъекты закупки:\n\n\n\n"
-    for item in items:
-        mail += "- {otc_name}\t{otc_price:0,.2f}\t{otc_count}\t{otc_sum:0,.2f}\n\n".format(
-            otc_name=item.otc_name,
-            otc_price=item.otc_price,
-            otc_count=item.otc_count,
-            otc_sum=item.otc_sum,
-        )
-    mail += "---"
-    return mail
+def get_html_for_trello(state_dict, template_file='template_tender_trello.html'):
+    """Функция возвращает html данные для отправки"""
+    html = open(template_file, encoding='utf8').read()
+    template = Template(html)
+    return template.render(state_dict=state_dict)
 
 
-def add_new_card(id_purchase):
+def add_new_card(unique_id):
     """
     Функция добавляет карточку с информацией из базы данных
     """
-    purchase = Purchase.select().where(Purchase.otc_number == int(id_purchase)).get()
-    items = Item.select().where(Item.otc_number == purchase)
-    client = TrelloClient(
-        api_key='3a950be8d9a067357e8aa3b6f7637fb7',
-        api_secret='fd100381b0c68994d56a7bab23a0155577f9a877f93c7026a76f3c21c405e373',
-    )
+    
+    state_dict = get_one_tender(unique_id)
+    
+    if state_dict['state'].add_trello == False:
+    
+        client = TrelloClient(
+            api_key=api_key,
+            api_secret=api_secret,
+        )
+        
+        places = {
+            'otc': client.get_label(label_id='5b42f68c9c16fb124a1cd32d', board_id='5b42f68cfa7e02948429e696'),
+            'zakupki': client.get_label(label_id='5b42f68c9c16fb124a1cd32b', board_id='5b42f68cfa7e02948429e696'),
+            'other': client.get_label(label_id='5b42f68c9c16fb124a1cd329', board_id='5b42f68cfa7e02948429e696'),
+            'portal': client.get_label(label_id='5b42f68c9c16fb124a1cd333', board_id='5b42f68cfa7e02948429e696'),
+            'berezka': client.get_label(label_id='5b42f68c9c16fb124a1cd336', board_id='5b42f68cfa7e02948429e696'), 
+            'rts': client.get_label(label_id='5b42f68c9c16fb124a1cd328', board_id='5b42f68cfa7e02948429e696'),   
+        }
+        
+        place = state_dict['state'].place
+        label = places.get(place)
+            
+        list_for_new = client.get_list('5b42f6d8787410608050c87e')
 
-    list_for_new = client.get_list('5b42f6d8787410608050c87e')
-    red_label = client.get_label(label_id='5b42f68c9c16fb124a1cd32d', board_id='5b42f68cfa7e02948429e696')
-    card = list_for_new.add_card(
-        labels=[red_label],
-        name="Закупка {otc_number}. {otc_name}".format(otc_number=purchase.otc_number, otc_name=purchase.otc_name),
-        desc=form_desc_for_cards(purchase, items),
-    )
-    members = client.get_board(board_id='5b42f68cfa7e02948429e696').get_members()
-    for member in members:
-        card.add_member(member)
-    card.set_due(purchase.otc_date_end_app-datetime.timedelta(10/24))
-    return 0
+        card = list_for_new.add_card(
+            labels=[label],
+            name="Закупка {number}. {name}".format(number=state_dict['state'].id_zak, name=state_dict['state'].name_group_pos),
+            desc=get_html_for_trello(state_dict).replace('\\n','\n').replace('\\t','\t'),
+        )
+        
+        members = client.get_board(board_id='5b42f68cfa7e02948429e696').get_members()
+        for member in members:
+            card.add_member(member)
+        if state_dict['state'].end_time is not None:
+            card.set_due(state_dict['state'].end_time-datetime.timedelta(10/24))
+        elif state_dict['state'].start_time is not None:
+            card.set_due(state_dict['state'].start_time-datetime.timedelta(8/24))
+        state_dict['state'].add_trello = True
+        state_dict['state'].save()
+        return 'Карточка успешно добавлена'
+    else:
+        return 'Карточка была добавлена ранее'
 
 
 def from_request_to_dict(request):
     my_json = request.json
-
     data = json.loads(my_json)
     return data
 
 
-@app.route('/tenderitem/save/<int:otc_id>', methods=['GET', 'POST'])
-def tender_item_save(otc_id):
-    """
-    Get JSON in format
-    [
-      {
-        'Count': 2.0,
-        'Id': 802568,
-        'Name': 'Тумба под аппаратуру 800х400х600',
-        'Okpd2Code': '31.01.12.150',
-        'Okpd2Name': 'Тумбы офисные деревянные',
-        'OkpdCode': '',
-        'Price': 1950.0,
-        'PriceHasValue': True,
-        'Sum': 3900.0,
-        'Unit': 'ШТ',
-        'UnitCode': '796'
-      },
-      {
-        'Count': 2.0,
-        'Id': 802568,
-        'Name': 'Тумба под аппаратуру 800х400х600',
-        'Okpd2Code': '31.01.12.150',
-        'Okpd2Name': 'Тумбы офисные деревянные',
-        'OkpdCode': '',
-        'Price': 1950.0,
-        'PriceHasValue': True,
-        'Sum': 3900.0,
-        'Unit': 'ШТ',
-        'UnitCode': '796'
-      }
-    ]
-
-    """
+@app.route('/tender_save', methods=['GET', 'POST'])
+def tender_item_save():
     data = from_request_to_dict(request)
-    save_to_base_items(otc_id, data)
-    return "Sucsess"
+    if update_tenders_in_base(data['actual_states'], data['actual_positions']) == 0:
+        return 'Sucsess'
+    else:
+        return "Что-то пошло не так"
 
 
-@app.route('/tender/save', methods=['GET', 'POST'])
-def tender_save():
-    """
-    Get JSON in format
-    {
-        'otc_customer': 'name_customer',
-        'otc_date_end_app': data,
-        'otc_name': 'name_zakup',
-        'otc_number': numer_zakup,
-        'otc_price': price_zakup,
-        'otc_url': 'url_zakup',
-        'platform': 'platform_zakup'
-    }
-    """
-    data = from_request_to_dict(request)
-    save_to_base(data)
-    return "Sucsess"
-
-
-@app.route('/update')
-def update():
-    # the long running process...
-    t = threading.Thread(target=sender.main, args=(login, pswrd,))
-    t.start()
-    # end the long running process
-    return jsonify({"success": True})
-
-
-@app.route('/tender/<otc_number>')
-def add_page(otc_number):
-    add_new_card(otc_number)
-    return "Sucsecc"
+@app.route('/tender/<unique_id>')
+def add_page(unique_id):
+    return add_new_card(unique_id)
 
 
 if __name__ == "__main__":

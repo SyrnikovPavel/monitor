@@ -6,3 +6,4 @@ myvenv
 .ipynb_checkpoints
 .idea
 config.py
+waitress.py

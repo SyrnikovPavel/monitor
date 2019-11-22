@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Новые закупки</title>
+    <style type="text/css">
+        .all_items{
+            margin: 2%;
+        }
+        .one_item{
+            display: grid;
+            grid-auto-rows: auto auto auto auto;
+            margin-bottom: 3%;
+        }
+        .header{
+            font-weight: bold;
+        }
+        .header a{
+            text-decoration: none;
+        }
+        .main_info{
+            display: grid;
+            grid-template-rows: auto;
+            grid-template-columns: auto auto auto;
+        }
+        .value{
+            font-weight: bold;
+        }
+        .items{
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            border: 1px solid black;
+        }
+        .items > div {
+            padding: 8px 4px;
+            border: 1px solid black;
+        }
+        .table_header{
+            font-weight: bold;
+        }
+                    
+    </style>
+</head>
+<body>
+    Добрый день!<br/>
+    Высылаю новые закупки<br/>
+    <div class="all_items">
+        {% for unique_id, state_dict  in states.items() %}
+            <div class="one_item">
+                <div class="header">
+                    <a href="{{state_dict['state'].url }}">
+                        Закупка {{ state_dict['state'].id_zak }}. {{ state_dict['state'].name_group_pos }}
+                    </a>
+                </div>
+                <div class="main_info">
+                    {% if state_dict['state'].place %}
+                    <div class="place">Площадка: <div class="value"> {{state_dict['state'].place }}</div></div>
+                    {% endif %}
+                    
+                    {% if state_dict['state'].start_time %}
+                    <div class="date">Дата начала подачи заявки: <div class="value"> {{state_dict['state'].start_time }}</div></div>
+                    {% endif %}
+                    
+                    {% if state_dict['state'].end_time %}
+                    <div class="date">Дата окончания подачи заявки: <div class="value"> {{ state_dict['state'].end_time }}</div>
+                    {% endif %}
+                </div>
+                    
+                    
+                    {% if state_dict['state'].start_price %}
+                    <div class="amount">Стартовая сумма заявки: <div class="value"> {{ state_dict['state'].start_price }}</div></div>
+                    {% endif %}
+                    
+                    {% if state_dict['state'].organization %}
+                    <div class="customer">Заказчик: <div class="value"> {{ state_dict['state'].organization }} </div></div>
+                    {% endif %}
+                    
+                    {% if state_dict['state'].current_status %}
+                    <div class="current_status">Текущий статус: <div class="value"> {{ state_dict['state'].current_status }} </div>
+                    {% endif %}
+                    
+</div>
+                </div>
+                {% if state_dict['positions'] %}
+                <table class="items">
+                    <tr>
+                        <th class="table_header">Наименование	</th>
+                        <th class="table_header">Цена	</th>
+                        <th class="table_header">Количество </th>
+                    </tr>
+                    {% for position in state_dict['positions'] %}
+                        <tr>
+                            <td class="table_item">{{ position.name }}</td>
+                            {% if state_dict['positions'] %}
+                                <td class="table_item">{{ position.price }}</td>
+                            {% else %}
+                                <td class="table_item"> - </td>
+                            {% endif %}
+                            <td class="table_item">{{ position.amount }}</td>
+                        </tr>
+                    {% endfor %}
+                </table>
+                {% endif %}
+                <div class="trello"><a href="http://syrnikovpavel.pythonanywhere.com/tender/{{ state_dict['state'].unique_id }}">Добавить в трелло</a></div>
+            </div>
+        {% endfor %}
+    </div>
+</body>
+</html>
