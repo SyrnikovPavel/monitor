@@ -1,8 +1,8 @@
 # coding: utf-8
-
+from config import *
 from peewee import *
 
-db = SqliteDatabase('database.db')
+db = SqliteDatabase(current_folder + '/database.db')
 
 
 class BaseModel(Model):

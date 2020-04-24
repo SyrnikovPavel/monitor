@@ -31,9 +31,9 @@ def find_actual_tenders():
     actual_states += actual_states_otc
     actual_positions += actual_positions_otc
     
-    #actual_states_zakupki, actual_positions_zakupki = get_states_zakupki()
-    #actual_states += actual_states_zakupki
-    #actual_positions += actual_positions_zakupki
+    actual_states_zakupki, actual_positions_zakupki = get_states_zakupki()
+    actual_states += actual_states_zakupki
+    actual_positions += actual_positions_zakupki
     
     actual_states_rts, actual_positions_rts = get_states_rts()
     actual_states += actual_states_rts
@@ -116,15 +116,15 @@ def get_one_tender(unqiue_id: str):
         return {}
     
 
-def send_tenders(states):
+def send_tenders(states, current_folder):
     """Функция служит для отправки письма и сохранения данных в базу"""
-    html = get_html(states, template_file='template_tenders.html')
+    html = get_html(states, template_file = current_folder + '/template_tenders.html')
     if send_email(html, "SyrnikovPavel@gmail.com", lgn, pswrd, header='Новые закупки') == 0:
         for unique_id, state_dict in states.items():
             state_dict['state'].send = True
             state_dict['state'].save()
     else:
-        send_tenders(states)
+        send_tenders(states, current_folder)
     send_email(html, "sursmirnav78@mail.ru", lgn, pswrd, header='Новые закупки')
     send_email(html, "89129295427@mail.ru", lgn, pswrd, header='Новые закупки')
 
@@ -136,7 +136,7 @@ def main():
     update_tenders_in_base(actual_states, actual_positions)
     not_send_states = get_all_tenders_not_send()
     if not_send_states != {}:
-        send_tenders(not_send_states)
+        send_tenders(not_send_states, current_folder)
 
 
 if __name__ == '__main__':
