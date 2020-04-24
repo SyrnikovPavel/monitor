@@ -31,15 +31,25 @@ def find_actual_tenders():
     actual_states += actual_states_otc
     actual_positions += actual_positions_otc
     
-    actual_states_zakupki, actual_positions_zakupki = get_states_zakupki()
-    actual_states += actual_states_zakupki
-    actual_positions += actual_positions_zakupki
+    #actual_states_zakupki, actual_positions_zakupki = get_states_zakupki()
+    #actual_states += actual_states_zakupki
+    #actual_positions += actual_positions_zakupki
     
     actual_states_rts, actual_positions_rts = get_states_rts()
     actual_states += actual_states_rts
     actual_positions += actual_positions_rts
     
-    return actual_states, actual_positions
+    n_actual_states = []
+    for actual_state in actual_states:
+        if actual_state not in n_actual_states:
+            n_actual_states.append(actual_state)
+            
+    n_actual_positions = []
+    for actual_position in actual_positions:
+        if actual_position not in n_actual_positions:
+            n_actual_positions.append(actual_position)
+    
+    return n_actual_states, n_actual_positions
 
 
 def update_tenders_in_base(actual_states, actual_positions):
@@ -48,9 +58,11 @@ def update_tenders_in_base(actual_states, actual_positions):
     for actual_state in actual_states:
         if State.get_or_none(State.unique_id==actual_state['unique_id']) is None:
             actual_states_not_in_base.append(actual_state)
+       
     with db.atomic():
         for batch in chunked(actual_states_not_in_base, 20):
             State.insert_many(batch).execute()
+            
     actual_states_unique_ids = [x['unique_id'] for x in actual_states_not_in_base]
     actual_positions_not_in_base = []
     for actual_position in actual_positions:
@@ -113,7 +125,8 @@ def send_tenders(states):
             state_dict['state'].save()
     else:
         send_tenders(states)
-    #send_email(html, "sursmirnav78@mail.ru ", lgn, pswrd, header='Новые закупки')
+    send_email(html, "sursmirnav78@mail.ru", lgn, pswrd, header='Новые закупки')
+    send_email(html, "89129295427@mail.ru", lgn, pswrd, header='Новые закупки')
 
 
 def main():

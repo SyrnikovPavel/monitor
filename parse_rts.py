@@ -7,6 +7,8 @@ import datetime
 def get_states_rts():
     "Функция возвращает закупки с rts-маркета"
     
+    print("Получаем закупки с сайта rts")
+    
     headers = {
         'Accept': 'application/json, text/plain, */*',
         'Accept-Encoding': 'gzip, deflate, br',
@@ -30,7 +32,7 @@ def get_states_rts():
     states = []
     positions = []
     
-    json_items = {
+    jsons_items = [{
         "Filtering":[
             {
                 "Title":"Ключевые слова",
@@ -74,34 +76,8 @@ def get_states_rts():
             "ItemsPerPage":200
         },
         "FilterSource":5
-    }
-
-
-    #r = requests.post(url="https://zmo-new-webapi.rts-tender.ru/market/api/v1/trades/publicsearch2", headers=headers, json=json_items)
-    #time.sleep(2)
-    #data = r.json()['data']['items']
-
-    #for item_data in data:
-    #    state = {
-    #        'unique_id': str(item_data.get('Id')) + '_rts',
-    #        'place': 'rts',
-    #        'id_zak': str(item_data.get('Id')),
-    #        'name_group_pos':item_data.get('Name'),
-    #        'organization': item_data.get('CustomerName'),
-    #        'start_time': datetime.datetime.strptime(item_data.get('PublicationDate'), '%Y-%m-%dT%H:%M:%S'),
-    #        'end_time': datetime.datetime.strptime(item_data.get('FillingApplicationEndDate'), '%Y-%m-%dT%H:%M:%S'),
-    #        'created_time': datetime.datetime.strptime(item_data.get('PublicationDate'), '%Y-%m-%dT%H:%M:%S'),
-    #        'current_status': item_data.get('StateString'),
-    #        'start_price': item_data.get('Price'),
-    #        'address': item_data.get('DeliveryKladrRegionName'),
-    #        'url': 'https://market.rts-tender.ru/zapros/' + str(item_data.get('Id')) + '/request',
-    #        'send': False, 
-    #        'add_trello': False,
-    #    }
-    #    states.append(state)
-
-
-    json_items = {
+    },
+    {
         "Filtering":
         [
             {
@@ -137,29 +113,199 @@ def get_states_rts():
             "Page":1,
             "ItemsPerPage":9
         },"FilterSource":5
-    }    
+    },
+    {
+        "Filtering":
+        [
+            {
+                "Title":"Регион поставки",
+                "Name":"KladrCodeRegion",
+                "ShortName":"reg",
+                "Type":0,
+                "Value":"7400000000000"
+            },
+            {
+                "Title":"Статус",
+                "Name":"Status",
+                "ShortName":"st",
+                "Type":1,
+                "Value":[0]
+            },
+            {
+                "Title":"Тип поиска",
+                "Name":"MarketSearchAction",
+                "ShortName":"t",
+                "Type":1,
+                "Value":1
+            }
+        ],
+        "PaginationEventType":0,
+        "Sorting":[
+            {
+                "direction":"Descending",
+                "field":"PublicationDate"
+            }
+        ],
+        "Paging":{
+            "Page":1,
+            "ItemsPerPage":9
+        },"FilterSource":5
+    },
+    {
+        "Filtering":
+        [
+            {
+                "Title":"Регион поставки",
+                "Name":"KladrCodeRegion",
+                "ShortName":"reg",
+                "Type":0,
+                "Value":"4500000000000"
+            },
+            {
+                "Title":"Статус",
+                "Name":"Status",
+                "ShortName":"st",
+                "Type":1,
+                "Value":[0]
+            },
+            {
+                "Title":"Тип поиска",
+                "Name":"MarketSearchAction",
+                "ShortName":"t",
+                "Type":1,
+                "Value":1
+            }
+        ],
+        "PaginationEventType":0,
+        "Sorting":[
+            {
+                "direction":"Descending",
+                "field":"PublicationDate"
+            }
+        ],
+        "Paging":{
+            "Page":1,
+            "ItemsPerPage":9
+        },"FilterSource":5
+    }, 
+    {
+        "Filtering":
+        [
+            {
+                "Title":"Регион поставки",
+                "Name":"KladrCodeRegion",
+                "ShortName":"reg",
+                "Type":0,
+                "Value":"6600000000000"
+            },
+            {
+                "Title":"Статус",
+                "Name":"Status",
+                "ShortName":"st",
+                "Type":1,
+                "Value":[0]
+            },
+            {
+                "Title":"Тип поиска",
+                "Name":"MarketSearchAction",
+                "ShortName":"t",
+                "Type":1,
+                "Value":1
+            }
+        ],
+        "PaginationEventType":0,
+        "Sorting":[
+            {
+                "direction":"Descending",
+                "field":"PublicationDate"
+            }
+        ],
+        "Paging":{
+            "Page":1,
+            "ItemsPerPage":9
+        },"FilterSource":5
+    }, 
+    {
+        "Filtering":
+        [
+            {
+                "Title":"Регион поставки",
+                "Name":"KladrCodeRegion",
+                "ShortName":"reg",
+                "Type":0,
+                "Value":"6600000000000"
+            },
+            {
+                "Title":"Статус",
+                "Name":"Status",
+                "ShortName":"st",
+                "Type":1,
+                "Value":[0]
+            },
+            {
+                "Title":"Тип поиска",
+                "Name":"MarketSearchAction",
+                "ShortName":"t",
+                "Type":1,
+                "Value":1
+            }
+        ],
+        "PaginationEventType":0,
+        "Sorting":[
+            {
+                "direction":"Descending",
+                "field":"PublicationDate"
+            }
+        ],
+        "Paging":{
+            "Page":1,
+            "ItemsPerPage":9
+        },"FilterSource":5
+    },  
+    ]
 
-    r = requests.post(url="https://zmo-new-webapi.rts-tender.ru/market/api/v1/trades/publicsearch2", headers=headers, json=json_items)
-    time.sleep(2)
-    data = r.json()['data']['items']
-    
-    for item_data in data:
-        state = {
-            'unique_id': str(item_data.get('Id')) + '_rts',
-            'place': 'rts',
-            'id_zak': str(item_data.get('Id')),
-            'name_group_pos':item_data.get('Name'),
-            'organization': item_data.get('CustomerName'),
-            'start_time': datetime.datetime.strptime(item_data.get('PublicationDate'), '%Y-%m-%dT%H:%M:%S'),
-            'end_time': datetime.datetime.strptime(item_data.get('FillingApplicationEndDate'), '%Y-%m-%dT%H:%M:%S'),
-            'created_time': datetime.datetime.strptime(item_data.get('PublicationDate'), '%Y-%m-%dT%H:%M:%S'),
-            'current_status': item_data.get('StateString'),
-            'start_price': item_data.get('Price'),
-            'address': item_data.get('DeliveryKladrRegionName'),
-            'url': 'https://market.rts-tender.ru/zapros/' + str(item_data.get('Id')) + '/request',
-            'send': False, 
-            'add_trello': False,
-        }
-        states.append(state)
-        
-    return states, positions
+
+    for json_items in jsons_items:
+        r = requests.post(url="https://zmo-new-webapi.rts-tender.ru/market/api/v1/trades/publicsearch2", headers=headers, json=json_items)
+        time.sleep(2)
+        data = r.json()['data']['items']
+
+        for item_data in data:
+            try:
+                pub_date = datetime.datetime.strptime(item_data.get('PublicationDate'), '%Y-%m-%dT%H:%M:%S') + datetime.timedelta(5/24)
+                end_date = datetime.datetime.strptime(item_data.get('FillingApplicationEndDate'), '%Y-%m-%dT%H:%M:%S') + datetime.timedelta(5/24)
+            except ValueError:
+                try:
+                    pub_date = datetime.datetime.strptime(item_data.get('PublicationDate'), '%Y-%m-%dT%H:%M:%S.%f') + datetime.timedelta(5/24)
+                    end_date = datetime.datetime.strptime(item_data.get('FillingApplicationEndDate'), '%Y-%m-%dT%H:%M:%S.%f') + datetime.timedelta(5/24)
+                except ValueError:
+                    pub_date = datetime.datetime.now()
+                    end_date = datetime.datetime.now()
+            #print(item_data.get('PublicationDate'))
+            state = {
+                'unique_id': str(item_data.get('Id')) + '_rts',
+                'place': 'rts',
+                'id_zak': str(item_data.get('Id')),
+                'name_group_pos':item_data.get('Name'),
+                'organization': item_data.get('CustomerName'),
+                'start_time': pub_date,
+                'end_time': end_date,
+                'created_time': pub_date,
+                'current_status': item_data.get('StateString'),
+                'start_price': item_data.get('Price'),
+                'address': item_data.get('DeliveryKladrRegionName'),
+                'url': 'https://zmo.rts-tender.ru/Trade/ViewTrade?id=' + str(item_data.get('Id')),
+                'send': False, 
+                'add_trello': False,
+            }
+            if state not in states:
+                states.append(state)
+
+    unique_ids = []
+    new_states = []
+    for x in states:
+        if x['unique_id'] not in unique_ids:
+            if x not in new_states:
+                new_states.append(x)
+                unique_ids.append(x['unique_id'])
+    return new_states, positions

@@ -7,6 +7,9 @@ from mailer import get_html, send_email
 
 def get_states_portal():
     """Функция возвращает сформированные позиции"""
+    
+    print("Получаем закупки с сайта portal")
+    
     headers = {
         'accept': 'application/json, text/plain, */*',
         'accept-encoding': 'gzip, deflate, br',
@@ -20,60 +23,85 @@ def get_states_portal():
         'sec-fetch-site': 'same-site',
         'user-agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.97 Safari/537.36',
     }
-    r = requests.post('https://old.zakupki.mos.ru/api/Cssp/Purchase/PostQuery', verify=False, headers=headers, json={"filter":{"regionPaths":[".4422."],"auctionSpecificFilter":{"stateIdIn":[19000002]},"needSpecificFilter":{"stateIdIn":[20000002]},"tenderSpecificFilter":{"stateIdIn":[5]}},"order":[{"field":"relevance","desc":True}],"withCount":True,"take":1000,"skip":0})
-    items = r.json()['items']
+    
     states = []
     positions = []
-    for item in items:
-        if item['needId'] is not None:
-            need_bool = True
-            url_pattern = 'https://old.zakupki.mos.ru/#/need/{0}'
-        else:
-            need_bool = False
-            url_pattern = 'https://old.zakupki.mos.ru/#/offerauction/{0}/view'
-        states.append({
-            'unique_id': str(item['number']) + '_portal', 
-            'place': 'portal',
-            'id_zak': int(item['number']),
-            'name_group_pos': item['name'],
-            'organization': item['customers'][0]['name'],
-            'start_time': datetime.datetime.strptime(item['beginDate'], '%d.%m.%Y %H:%M:%S'),
-            'end_time': datetime.datetime.strptime(item['endDate'], '%d.%m.%Y %H:%M:%S'),
-            'created_time': datetime.datetime.strptime(item['beginDate'], '%d.%m.%Y %H:%M:%S'),
-            'current_status': item['stateName'],
-            'start_price': float(item['startPrice']),
-            'address': None,
-            'url': url_pattern.format(item['number']),
-            'send': False,
-            'add_trello': False,
-        })
-        if need_bool:
-            r = requests.get('https://old.zakupki.mos.ru/api/Cssp/Need/GetEntity?id={0}'.format(item['number']), verify=False)
-            if r.status_code == 200:
-                positions += [{
-                    'unique_id': str(item['number']) + '_portal',
-                    'name': x['name'], 
-                    'amount': x['amount'], 
-                    'price': x['cost']
-                } for x in r.json()['items']] 
-        else:
-            r = requests.get('https://old.zakupki.mos.ru/api/Cssp/OfferAuction/GetEntity?id={0}'.format(item['number']), verify=False)
-            if r.status_code == 200:
-                positions += [{
-                    'unique_id': str(item['number']) + '_portal',
-                    'name': x['offerAuctionItem'].get('offerSkuName'), 
-                    'amount': int(x['currentValue']), 
-                    'price': x['costPerUnit']
-                } if x['offerAuctionItem'] is not None else {
-                    'unique_id': str(item['number']) + '_portal',
-                    'name': 'Без названия', 
-                    'amount': int(x['currentValue']), 
-                    'price': x['costPerUnit']
-                } for x in r.json()['items']] 
-    return states, positions
+    
+    jsons = [
+        {"filter":{"regionPaths":[".4422."],"auctionSpecificFilter":{"stateIdIn":[19000002]},"needSpecificFilter":{"stateIdIn":[20000002]},"tenderSpecificFilter":{"stateIdIn":[5]}},"order":[{"field":"relevance","desc":True}],"withCount":True,"take":1000,"skip":0},
+        {"filter":{"regionPaths":[".192."],"auctionSpecificFilter":{"stateIdIn":[19000002]},"needSpecificFilter":{"stateIdIn":[20000002]},"tenderSpecificFilter":{"stateIdIn":[5]}},"order":[{"field":"relevance","desc":True}],"withCount":True,"take":1000,"skip":0},
+    ]
+    
+    for js in jsons:
+        r = requests.post('https://old.zakupki.mos.ru/api/Cssp/Purchase/PostQuery', headers=headers, json=js)
+        items = r.json()['items']
+        
+        for item in items:
+            if item['needId'] is not None:
+                need_bool = True
+                url_pattern = 'https://old.zakupki.mos.ru/#/need/{0}'
+            else:
+                need_bool = False
+                url_pattern = 'https://zakupki.mos.ru/auction/{0}'
+            
+            start_price = 0.0
+            if item['startPrice'] is not None:
+                start_price = float(item['startPrice'])
+            
+            state = {
+                'unique_id': str(item['number']) + '_portal', 
+                'place': 'portal',
+                'id_zak': int(item['number']),
+                'name_group_pos': item['name'],
+                'organization': item['customers'][0]['name'],
+                'start_time': datetime.datetime.strptime(item['beginDate'], '%d.%m.%Y %H:%M:%S') + datetime.timedelta(2/24),
+                'end_time': datetime.datetime.strptime(item['endDate'], '%d.%m.%Y %H:%M:%S') + datetime.timedelta(2/24),
+                'created_time': datetime.datetime.strptime(item['beginDate'], '%d.%m.%Y %H:%M:%S') + datetime.timedelta(2/24),
+                'current_status': item['stateName'],
+                'start_price': start_price,
+                'address': None,
+                'url': url_pattern.format(item['number']),
+                'send': False,
+                'add_trello': False,
+            }
+            if state not in states:
+                states.append(state)
+                if need_bool:
+                    r = requests.get('https://old.zakupki.mos.ru/api/Cssp/Need/GetEntity?id={0}'.format(item['number']))
+                    if r.status_code == 200:
+                        positions += [{
+                            'unique_id': str(item['number']) + '_portal',
+                            'name': x['name'], 
+                            'amount': x['amount'], 
+                            'price': x['cost']
+                        } for x in r.json()['items']] 
+                else:
+                    r = requests.get('https://old.zakupki.mos.ru/api/Cssp/OfferAuction/GetEntity?id={0}'.format(item['number']))
+                    if r.status_code == 200:
+                        positions += [{
+                            'unique_id': str(item['number']) + '_portal',
+                            'name': x['offerAuctionItem'].get('offerSkuName'), 
+                            'amount': int(x['currentValue']), 
+                            'price': x['costPerUnit']
+                        } if x['offerAuctionItem'] is not None else {
+                            'unique_id': str(item['number']) + '_portal',
+                            'name': 'Без названия', 
+                            'amount': int(x['currentValue']), 
+                            'price': x['costPerUnit']
+                        } for x in r.json()['items']] 
+                        
+    unique_ids = []
+    new_states = []
+    for x in states:
+        if x['unique_id'] not in unique_ids:
+            if x not in new_states:
+                new_states.append(x)
+                unique_ids.append(x['unique_id'])
+    
+    return new_states, positions
 
 if __name__ == '__main__':
-    data = get_positions_portal()
+    data = get_states_portal()
     message = get_html(data, template_file='template_portal.html')
     header = 'Новые закупки Портал Поставщиков'
     send_email(message, "SyrnikovPavel@gmail.com", "SyrnikovPavel@gmail.com", "Nastya26042015", header=header)

@@ -50,14 +50,14 @@ def form_positions(items):
             address = item['delivery']['address']['full']
         else:
             address = item['customer']['organization']['eat_addresses'][0]['address_str']
-        states.append({
+        state = {
             'unique_id': str(item['id']) + '_berezka',
             'place': 'berezka',
             'id_zak': item['id'],
             'name_group_pos': item['condition']['nameTRY'],
             'organization': item['condition']['organizationFullName'],
             'start_time': datetime.datetime.strptime(item['orderStart'], '%Y-%m-%d %H:%M:%S'),
-            'end_time': datetime.datetime.strptime(item['orderStart'], '%Y-%m-%d %H:%M:%S') + datetime.timedelta(5/24),
+            'end_time': datetime.datetime.strptime(item['orderStart'], '%Y-%m-%d %H:%M:%S') + datetime.timedelta(7/24),
             'created_time': datetime.datetime.strptime(item['created_at'], '%Y-%m-%d %H:%M:%S') + datetime.timedelta(3),
             'current_status': item['status'],
             'start_price': float(item['condition']['startfinalprice']),
@@ -65,12 +65,25 @@ def form_positions(items):
             'url': "https://agregatoreat.ru/purchase/{0}/order-info#specification".format(item['id']),
             'send': False,
             'add_trello': False,
-        })
-        positions += [{'unique_id': str(item['id']) + '_berezka','name': x['label']['<all_channels>']['<all_locales>'], 'amount': x['qty'], 'price': None} for x in item['products']]
-    return states, positions
+        }
+        if state not in states:
+            states.append(state)
+            positions += [{'unique_id': str(item['id']) + '_berezka','name': x['label']['<all_channels>']['<all_locales>'], 'amount': x['qty'], 'price': None} if x['label'] != [] else {'unique_id': str(item['id']) + '_berezka','name': x['family']['labels']['ru_RU'], 'amount': x['qty'], 'price': None} for x in item['products']]
+    
+    unique_ids = []
+    new_states = []
+    for x in states:
+        if x['unique_id'] not in unique_ids:
+            if x not in new_states:
+                new_states.append(x)
+                unique_ids.append(x['unique_id'])
+    return new_states, positions
 
 def get_states_ber():
     """Функция возвращает сформированные позиции"""
+    
+    print("Получаем закупки с сайта berezka")
+    
     items = load_current_zak()
     return form_positions(items)
 
