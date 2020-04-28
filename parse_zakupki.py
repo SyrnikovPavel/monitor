@@ -1,96 +1,239 @@
 # coding: utf-8
 
-import feedparser
-import requests
+from ftplib import FTP
+from zipfile import ZipFile
 from bs4 import BeautifulSoup
+import time
+import traceback
+import sys
+import os
 import datetime
-import re
+from config import current_folder
 
-def get_endtime(url):
-    """Функция возвращает дату окончания подачи заявок"""
-    end_time = None
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.97 Safari/537.36',
-        "Cache-Control": "no-cache",
-        "Pragma": "no-cache"
-    }
+
+folder_zip = current_folder + '/notifications/zip_files/'
+folder_unzip = current_folder + '/notifications/unzip_files/'
+file_already = current_folder + '/already.txt'
+
+
+def get_files_from_zipfile(filename: str):
+    "Фукнция возвращает список файлов в архиве"
+    with ZipFile(filename, 'r') as zip_obj:
+        file_names = zip_obj.namelist()
+        return [file_name for file_name in file_names if ((file_name.endswith('.xml')) and (('fcsNotificationEA44' in file_name) or ('fcsNotificationZK504' in file_name)))]
+
+def unzip_files_from_folder(folder_zip='notifications/zip_files/', folder_unzip='notifications/unzip_files/'):
+    'Функция для разархивации архивов'
+    for file in os.listdir(folder_zip):
+        zip_filename = folder_zip + file
+        with ZipFile(zip_filename, 'r') as zip_obj:
+            file_names = zip_obj.namelist()
+            for file_name in file_names:
+                if file_name.endswith('.xml') and 'contract_' in file_name:
+                    if os.path.exists(folder_unzip + file_name) is False:
+                        zip_obj.extract(file_name, folder_unzip)
+    return 0
     
-    end_time = datetime.datetime.now() + datetime.timedelta(2/24)
+def unzip_file(filename, archive_name, folder_with_archives='notifications/zip_files/', folder_with_files = 'notifications/unzip_files/'):
+    'Функция для разархивации конкретного файла'
+    zip_filename = folder_with_archives + archive_name
+    with ZipFile(zip_filename, 'r') as zip_obj:
+        if os.path.exists(folder_with_files + filename) is False:
+            zip_obj.extract(filename, folder_with_files)
+    return 0
+
+
+def update_zip_files_in_base(files: list):
+    "Функция для обновления списка архивов"
+
+    data_source = [{'name': file, 'download_bool': False, 'unzip_bool': False, 'update_all_bool': False} for file in files]
+    with db.atomic():
+        for batch in chunked(data_source, 20):
+            Archive.insert_many(batch).on_conflict_ignore().execute()
+            
+    return 0
+
+def need_add(soup, okpd2_codes):
+    "Функция для определения - подходит ли нам эта закупка"
+    codes_okpd2 = list(set([x.code.getText() for x in soup.find_all('okpd2')]))
+    codes_okpd2 += list(set([x.code.getText()[:x.code.getText().find('-')] for x in soup.find_all('ktru')]))
+    codes_okpd2 = list(set(codes_okpd2))
+    for x in okpd2_codes:
+        if x in [y[:len(x)] for y in codes_okpd2]:
+            return True
+    return False
+
+def get_ready_file(filename='already.txt'):
+    "функция получает список уже готовых архивов"
+    with open(filename, 'r', encoding='utf8') as file:
+        return file.read().split('\n')[:-1]
     
-    r = requests.get(url, headers=headers)
-    soup = BeautifulSoup(r.content, 'lxml')
-    for table in soup.find_all('div', {'class': 'noticeTabBoxWrapper'}):
-        for tr in table.find_all('tr'):
-            tds = tr.find_all('td')
-            if len(tds)>=2:
-                key = tds[0].getText()
-                value = tds[1].getText()
-                if 'Дата и время окончания подачи заявок' in key:
-                    if value != '':
-                        try:
-                            if value.find(' (МСК')>=0:
-                                end_time = datetime.datetime.strptime(value[:value.find(' (МСК')], '%d.%m.%Y в %H:%M')
-                            else:
-                                end_time = datetime.datetime.strptime(value, '%d.%m.%Y %H:%M')
-                        except ValueError:
-                            print(value)
-                            break
+def write_ready_file(ready_file, filename='already.txt'):
+    "Функция записывает готовый архив в список"
+    with open(filename, 'a', encoding='utf8') as file:
+        file.write(ready_file + '\n')
+    return 0
+
+class UserFTP(FTP):
     
-    return end_time
-
-def get_states_from_url(url, ids, states):
-    """Функция возвращает закупки с сайта zakupki.gov по заданному url"""
+    host='ftp.zakupki.gov.ru'
+    user='free'
+    passwd='free'
     
-    try:
-        d = feedparser.parse(url)
-
-        for entry in d['entries']:
-            if re.search('\d+', entry['title']).group(0) not in ids:
-                state = {
-                    'place': 'zakupki',
-                    'id_zak': re.search('\d+', entry['title']).group(0),
-                    'unique_id': str(re.search('\d+', entry['title']).group(0)) + '_zakupki',
-                    'organization': entry['author'],
-                    'url': entry['link'],
-                    'end_time': get_endtime(entry['link']),
-                    'address': None,
-                    'send': False,
-                    'add_trello': False,
-                }
-
-
-                replaced_dict = {
-                    'Наименование объекта закупки: ': 'name_group_pos',
-                    'Обновлено: ': 'start_time',
-                    'Размещено: ': 'created_time',
-                    'Этап размещения: ': 'current_status',
-                    'Начальная цена контракта: ': 'start_price',
-                }
-
-                for x in entry['summary'].split('<br/>'):
-                    soup = BeautifulSoup(x, 'lxml')
-                    strong = soup.find('strong')
-                    if strong is not None:
-                        key = strong.getText()
-                        value = soup.getText().replace(key,'').replace(' Валюта: Российский рубль', '')
-                        if key in replaced_dict:
-                            if replaced_dict.get(key) == 'start_price':
-                                try:
-                                    state.update({'start_price': float(value)})
-                                except ValueError:
-                                    state.update({'start_price': float(0)})
-                            elif replaced_dict.get(key) == 'start_time':
-                                state.update({'start_time':datetime.datetime.strptime(value, '%d.%m.%Y')})
-                            elif replaced_dict.get(key) == 'created_time':
-                                state.update({'created_time':datetime.datetime.strptime(value, '%d.%m.%Y')})
-                            else:
-                                state.update({replaced_dict.get(key): value})
-                ids.append(re.search('\d+', entry['title']).group(0))
-                if state not in states:
-                    states.append(state)
-    except requests.exceptions.ConnectionError as e:
-        print(e)
+    def login(self):
+        super().login(user=UserFTP.user, passwd=UserFTP.passwd)
+        
+    def download_zip_file_from_ftp(self, filename, folder='/fcs_regions/Tjumenskaja_obl/notifications/currMonth', outfolder='notifications/zip_files/'):
+        "Функция для скачивания конкретного zip файла из папки на ftp сервере"
+        self.cwd(folder)
+        outfile = str(outfolder) + str(filename)
+        if os.path.exists(outfile) is False:
+            with open(outfile, 'wb') as f:
+                self.retrbinary('RETR ' + filename, f.write)
+        return 0
     
+    def get_all_zip_files_from_ftp(self, folder='/fcs_regions/Tjumenskaja_obl/notifications/currMonth', outfolder='notifications/zip_files/'):
+        "Функция для получения zip файлов из папки на ftp сервере"
+        self.cwd(folder)
+        files = [file for file in self.nlst() if ((file[-4:]=='.zip') & ('2014' not in file))]
+        return files
+    
+    def download_all_zip_file_from_ftp(self, folder='/fcs_regions/Tjumenskaja_obl/notifications/currMonth', outfolder='notifications/zip_files/'):
+        "Функция для скачивания zip файлов из папки на ftp сервере"
+        self.cwd(folder)
+        for file in self.nlst():
+            if file[-4:]=='.zip':
+                outfile = str(outfolder) + str(file)
+                if os.path.exists(outfile) is False:
+                    with open(outfile, 'wb') as f:
+                        self.retrbinary('RETR ' + file, f.write)
+                        print(file)
+        return 0
+
+def get_state_and_positions(filename):
+    "Функция для обработки файла и получения информации о закупке и позициях"
+    
+    okpd2_codes = [
+        '43.39.11',
+        '43.99.90.100',
+        '01.3',
+        '81.3',
+        '01.29',
+        '18.12',
+        '26.60',
+        '32.50',
+        '02.40.10',
+        '38.11.29',
+        '38.11.52',
+        '82.99.19',
+        '91.01.12',
+        '13.93.19.120',
+        '17.22.11.130',
+        '18.13.30.000',
+        '22.11.11.000',
+        '25.62.20.000',
+        '25.99.29.190',
+        '43.11.10.000',
+        '43.29.12.110',
+        '43.29.19.140',
+        '43.99.70.000',
+        '43.99.90.190',
+        '45.20.23.000',
+        '81.22.12.000',
+        '95.29.14.119',
+        '96.01.12.129',
+    ]
+    
+    state = {}
+    positions = []
+    with open(filename, 'r', encoding="utf8") as fobj:
+        xml = fobj.read()
+        soup = BeautifulSoup(xml, 'lxml')
+        if need_add(soup, okpd2_codes):
+            place = soup.etp.find('name').getText()
+            id_zak = soup.purchasenumber.getText()
+            name_group_pos = soup.purchaseobjectinfo.getText()
+            organization = soup.customer.fullname.getText()
+
+            if soup.startdate is not None:
+                start_time = soup.startdate.getText()
+            else:
+                start_time = soup.startdt.getText()
+
+            if soup.enddate is not None:
+                end_time = soup.enddate.getText()
+            else:
+                end_time = soup.enddt.getText()
+
+            start_time = datetime.datetime.strptime(start_time[:-6], '%Y-%m-%dT%H:%M:%S')
+            end_time = datetime.datetime.strptime(end_time[:-6], '%Y-%m-%dT%H:%M:%S')
+            current_status = "Активная" if datetime.datetime.now() <= end_time else "Завершена"
+            start_price = float(soup.maxprice.getText())
+            address = soup.deliveryplace.getText()
+            url = soup.href.getText()
+
+            state = {
+                'unique_id': id_zak + '_' + place, 
+                'place': place,
+                'id_zak': id_zak,
+                'name_group_pos': name_group_pos,
+                'organization': organization,
+                'start_time': start_time,
+                'end_time': end_time,
+                'created_time': start_time,
+                'current_status': current_status,
+                'start_price': start_price,
+                'address': address,
+                'url': url,
+                'send': False,
+                'add_trello': False,
+            }
+            
+            positions += [{
+                    'unique_id': id_zak + '_' + place,
+                    'name': position.find_all('name')[-1].getText() if len(position.find_all('name'))>1 else position.find_all('name')[0],
+                    'amount': int(position.quantity.value.getText()) if position.quantity.undefined is not None else None,
+                    'price': float(position.price.getText())
+            } for position in soup.find_all('purchaseobject')]
+    return state, positions
+    
+def get_states_zakupki():
+
+    print("Получаем закупки с сайта zakupki.gov")
+    
+    global current_folder
+    
+    folder_zip = current_folder + '/notifications/zip_files/'
+    folder_with_files = current_folder + '/notifications/unzip_files/'
+    file_already = current_folder + '/already.txt'
+
+    ftp = UserFTP(UserFTP.host)
+    ftp.login()
+    files = ftp.get_all_zip_files_from_ftp(outfolder=folder_zip)
+
+    already_files = get_ready_file(file_already)
+
+    files = [x for x in files if x not in already_files] # смотрим, чтобы файлы не повторялись
+
+    states = []
+    positions = []
+
+
+    for ftp_file in files:
+        ftp.download_zip_file_from_ftp(ftp_file, outfolder=folder_zip) # скачиваем файл
+        files_in_archive = get_files_from_zipfile(folder_zip + ftp_file)
+        for file in files_in_archive:
+            unzip_file(file, ftp_file, folder_with_archives=folder_zip, folder_with_files=folder_with_files) # разархивируем файл
+            state, positions_state = get_state_and_positions(folder_with_files + file)
+            if state not in states and state != {}:
+                states.append(state)
+                positions += positions_state
+            os.remove(folder_with_files + file)
+
+        write_ready_file(ftp_file, file_already)
+
+        os.remove(folder_zip + ftp_file)
+
     unique_ids = []
     new_states = []
     for x in states:
@@ -98,53 +241,5 @@ def get_states_from_url(url, ids, states):
             if x not in new_states:
                 new_states.append(x)
                 unique_ids.append(x['unique_id'])
-    return ids, new_states
-
-
-def get_states_zakupki():
-    """Функция возвращает закупки с сайта zakupki.gov"""
     
-    print("Получаем закупки с сайта zakupki.gov")
-    
-    states = []
-    ids = []
-    
-    urls = {
-        'Местоположение поставки: Тюмень': 'http://zakupki.gov.ru/epz/order/extendedsearch/rss.html?morphology=on&pageNumber=1&sortDirection=false&recordsPerPage=_50&showLotsInfoHidden=false&fz44=on&fz223=on&sortBy=PUBLISH_DATE&okpd2IdsWithNested=on&okpd2Ids=8878464%2C73143%2C8873973%2C8874206%2C8874258%2C8874364%2C8874459%2C8874515%2C8876509%2C8878352%2C8878358%2C8879355%2C8879469%2C8882959%2C8884073%2C8884146%2C8885411%2C8886517%2C8886816%2C8889732%2C8889778%2C8889783%2C8889838%2C8889845%2C8889870%2C8891050%2C9398582%2C9398623&okpd2IdsCodes=43.39.11%2C43.99.90.100%2C01.3%2C81.3&af=on&publishDateFrom=+&applSubmissionCloseDateFrom=+&updateDateFrom=+&currencyIdGeneral=-1&customerPlaceWithNested=on&delKladrIdsWithNested=on&delKladrIds=5277379&delKladrIdsCodes=72000000000&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3&contractPriceCurrencyId=-1',
-        'Местоположение поставки: Курган': 'http://zakupki.gov.ru/epz/order/extendedsearch/rss.html?morphology=on&pageNumber=1&sortDirection=false&recordsPerPage=_50&showLotsInfoHidden=false&fz44=on&fz223=on&sortBy=PUBLISH_DATE&okpd2IdsWithNested=on&okpd2Ids=8878464%2C73143%2C8873973%2C8874206%2C8874258%2C8874364%2C8874459%2C8874515%2C8876509%2C8878352%2C8878358%2C8879355%2C8879469%2C8882959%2C8884073%2C8884146%2C8885411%2C8886517%2C8886816%2C8889732%2C8889778%2C8889783%2C8889838%2C8889845%2C8889870%2C8891050%2C9398582%2C9398623&okpd2IdsCodes=43.39.11%2C43.99.90.100%2C01.3%2C81.3&af=on&publishDateFrom=+&applSubmissionCloseDateFrom=+&updateDateFrom=+&currencyIdGeneral=-1&customerPlaceWithNested=on&delKladrIdsWithNested=on&delKladrIds=5277378&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3&contractPriceCurrencyId=-1',
-        'Местоположение поставки: Челябинск': 'http://zakupki.gov.ru/epz/order/extendedsearch/rss.html?morphology=on&pageNumber=1&sortDirection=false&recordsPerPage=_50&showLotsInfoHidden=false&fz44=on&fz223=on&sortBy=PUBLISH_DATE&okpd2IdsWithNested=on&okpd2Ids=8878464%2C73143%2C8873973%2C8874206%2C8874258%2C8874364%2C8874459%2C8874515%2C8876509%2C8878352%2C8878358%2C8879355%2C8879469%2C8882959%2C8884073%2C8884146%2C8885411%2C8886517%2C8886816%2C8889732%2C8889778%2C8889783%2C8889838%2C8889845%2C8889870%2C8891050%2C9398582%2C9398623&okpd2IdsCodes=43.39.11%2C43.99.90.100%2C01.3%2C81.3&af=on&publishDateFrom=+&applSubmissionCloseDateFrom=+&updateDateFrom=+&currencyIdGeneral=-1&customerPlaceWithNested=on&delKladrIdsWithNested=on&delKladrIds=5277380&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3&contractPriceCurrencyId=-1',
-        'Местоположение поставки: Екатеринбург': 'http://zakupki.gov.ru/epz/order/extendedsearch/rss.html?morphology=on&pageNumber=1&sortDirection=false&recordsPerPage=_50&showLotsInfoHidden=false&fz44=on&fz223=on&sortBy=PUBLISH_DATE&okpd2IdsWithNested=on&okpd2Ids=8878464%2C73143%2C8873973%2C8874206%2C8874258%2C8874364%2C8874459%2C8874515%2C8876509%2C8878352%2C8878358%2C8879355%2C8879469%2C8882959%2C8884073%2C8884146%2C8885411%2C8886517%2C8886816%2C8889732%2C8889778%2C8889783%2C8889838%2C8889845%2C8889870%2C8891050%2C9398582%2C9398623&okpd2IdsCodes=43.39.11%2C43.99.90.100%2C01.3%2C81.3&af=on&publishDateFrom=+&applSubmissionCloseDateFrom=+&updateDateFrom=+&currencyIdGeneral=-1&customerPlaceWithNested=on&delKladrIdsWithNested=on&delKladrIds=5277383&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3&contractPriceCurrencyId=-1',
-        'Местоположение поставки: ХМАО': 'http://zakupki.gov.ru/epz/order/extendedsearch/rss.html?morphology=on&pageNumber=1&sortDirection=false&recordsPerPage=_50&showLotsInfoHidden=false&fz44=on&fz223=on&sortBy=PUBLISH_DATE&okpd2IdsWithNested=on&okpd2Ids=8878464%2C73143%2C8873973%2C8874206%2C8874258%2C8874364%2C8874459%2C8874515%2C8876509%2C8878352%2C8878358%2C8879355%2C8879469%2C8882959%2C8884073%2C8884146%2C8885411%2C8886517%2C8886816%2C8889732%2C8889778%2C8889783%2C8889838%2C8889845%2C8889870%2C8891050%2C9398582%2C9398623&okpd2IdsCodes=43.39.11%2C43.99.90.100%2C01.3%2C81.3&af=on&publishDateFrom=+&applSubmissionCloseDateFrom=+&updateDateFrom=+&currencyIdGeneral=-1&customerPlaceWithNested=on&delKladrIdsWithNested=on&delKladrIds=5277381&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3&contractPriceCurrencyId=-1',
-        'Местоположение поставки: ЯНАО': 'http://zakupki.gov.ru/epz/order/extendedsearch/rss.html?morphology=on&pageNumber=1&sortDirection=false&recordsPerPage=_50&showLotsInfoHidden=false&fz44=on&fz223=on&sortBy=PUBLISH_DATE&okpd2IdsWithNested=on&okpd2Ids=8878464%2C73143%2C8873973%2C8874206%2C8874258%2C8874364%2C8874459%2C8874515%2C8876509%2C8878352%2C8878358%2C8879355%2C8879469%2C8882959%2C8884073%2C8884146%2C8885411%2C8886517%2C8886816%2C8889732%2C8889778%2C8889783%2C8889838%2C8889845%2C8889870%2C8891050%2C9398582%2C9398623&okpd2IdsCodes=43.39.11%2C43.99.90.100%2C01.3%2C81.3&af=on&publishDateFrom=+&applSubmissionCloseDateFrom=+&updateDateFrom=+&currencyIdGeneral=-1&customerPlaceWithNested=on&delKladrIdsWithNested=on&delKladrIds=5277382&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3&contractPriceCurrencyId=-1',
-        'Местоположение заказчика: Курган': 'http://zakupki.gov.ru/epz/order/extendedsearch/rss.html?morphology=on&pageNumber=1&sortDirection=false&recordsPerPage=_50&showLotsInfoHidden=false&fz44=on&fz223=on&sortBy=PUBLISH_DATE&okpd2IdsWithNested=on&okpd2Ids=8878464%2C73143%2C8873973%2C8874206%2C8874258%2C8874364%2C8874459%2C8874515%2C8876509%2C8878352%2C8878358%2C8879355%2C8879469%2C8882959%2C8884073%2C8884146%2C8885411%2C8886517%2C8886816%2C8889732%2C8889778%2C8889783%2C8889838%2C8889845%2C8889870%2C8891050%2C9398582%2C9398623&okpd2IdsCodes=43.39.11%2C43.99.90.100%2C01.3%2C81.3%2C01.29%2C18.12%2C26.60%2C32.50%2C02.40.10%2C38.11.29%2C38.11.52%2C82.99.19%2C91.01.12%2C13.93.19.120%2C17.22.11.130%2C18.13.30.000%2C22.11.11.000%2C25.62.20.000%2C25.99.29.190%2C43.11.10.000%2C43.29.12.110%2C43.29.19.140%2C43.99.70.000%2C43.99.90.190%2C45.20.23.000%2C81.22.12.000%2C95.29.14.119%2C96.01.12.129&af=on&publishDateFrom=+&applSubmissionCloseDateFrom=+&updateDateFrom=+&currencyIdGeneral=-1&customerPlaceWithNested=on&customerPlace=5277378&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3&contractPriceCurrencyId=-1',
-        'Местоположение заказчика: Челябинск': 'http://zakupki.gov.ru/epz/order/extendedsearch/rss.html?morphology=on&pageNumber=1&sortDirection=false&recordsPerPage=_50&showLotsInfoHidden=false&fz44=on&fz223=on&sortBy=PUBLISH_DATE&okpd2IdsWithNested=on&okpd2Ids=8878464%2C73143%2C8873973%2C8874206%2C8874258%2C8874364%2C8874459%2C8874515%2C8876509%2C8878352%2C8878358%2C8879355%2C8879469%2C8882959%2C8884073%2C8884146%2C8885411%2C8886517%2C8886816%2C8889732%2C8889778%2C8889783%2C8889838%2C8889845%2C8889870%2C8891050%2C9398582%2C9398623&okpd2IdsCodes=43.39.11%2C43.99.90.100%2C01.3%2C81.3%2C01.29%2C18.12%2C26.60%2C32.50%2C02.40.10%2C38.11.29%2C38.11.52%2C82.99.19%2C91.01.12%2C13.93.19.120%2C17.22.11.130%2C18.13.30.000%2C22.11.11.000%2C25.62.20.000%2C25.99.29.190%2C43.11.10.000%2C43.29.12.110%2C43.29.19.140%2C43.99.70.000%2C43.99.90.190%2C45.20.23.000%2C81.22.12.000%2C95.29.14.119%2C96.01.12.129&af=on&publishDateFrom=+&applSubmissionCloseDateFrom=+&updateDateFrom=+&currencyIdGeneral=-1&customerPlaceWithNested=on&customerPlace=5277380&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3&contractPriceCurrencyId=-1',
-        'Местоположение заказчика: Екатеринбург': 'http://zakupki.gov.ru/epz/order/extendedsearch/rss.html?morphology=on&pageNumber=1&sortDirection=false&recordsPerPage=_50&showLotsInfoHidden=false&fz44=on&fz223=on&sortBy=PUBLISH_DATE&okpd2IdsWithNested=on&okpd2Ids=8878464%2C73143%2C8873973%2C8874206%2C8874258%2C8874364%2C8874459%2C8874515%2C8876509%2C8878352%2C8878358%2C8879355%2C8879469%2C8882959%2C8884073%2C8884146%2C8885411%2C8886517%2C8886816%2C8889732%2C8889778%2C8889783%2C8889838%2C8889845%2C8889870%2C8891050%2C9398582%2C9398623&okpd2IdsCodes=43.39.11%2C43.99.90.100%2C01.3%2C81.3%2C01.29%2C18.12%2C26.60%2C32.50%2C02.40.10%2C38.11.29%2C38.11.52%2C82.99.19%2C91.01.12%2C13.93.19.120%2C17.22.11.130%2C18.13.30.000%2C22.11.11.000%2C25.62.20.000%2C25.99.29.190%2C43.11.10.000%2C43.29.12.110%2C43.29.19.140%2C43.99.70.000%2C43.99.90.190%2C45.20.23.000%2C81.22.12.000%2C95.29.14.119%2C96.01.12.129&af=on&publishDateFrom=+&applSubmissionCloseDateFrom=+&updateDateFrom=+&currencyIdGeneral=-1&customerPlaceWithNested=on&customerPlace=5277383&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3&contractPriceCurrencyId=-1',
-        'Местоположение заказчика: ХМАО': 'http://zakupki.gov.ru/epz/order/extendedsearch/rss.html?morphology=on&pageNumber=1&sortDirection=false&recordsPerPage=_50&showLotsInfoHidden=false&fz44=on&fz223=on&sortBy=PUBLISH_DATE&okpd2IdsWithNested=on&okpd2Ids=8878464%2C73143%2C8873973%2C8874206%2C8874258%2C8874364%2C8874459%2C8874515%2C8876509%2C8878352%2C8878358%2C8879355%2C8879469%2C8882959%2C8884073%2C8884146%2C8885411%2C8886517%2C8886816%2C8889732%2C8889778%2C8889783%2C8889838%2C8889845%2C8889870%2C8891050%2C9398582%2C9398623&okpd2IdsCodes=43.39.11%2C43.99.90.100%2C01.3%2C81.3%2C01.29%2C18.12%2C26.60%2C32.50%2C02.40.10%2C38.11.29%2C38.11.52%2C82.99.19%2C91.01.12%2C13.93.19.120%2C17.22.11.130%2C18.13.30.000%2C22.11.11.000%2C25.62.20.000%2C25.99.29.190%2C43.11.10.000%2C43.29.12.110%2C43.29.19.140%2C43.99.70.000%2C43.99.90.190%2C45.20.23.000%2C81.22.12.000%2C95.29.14.119%2C96.01.12.129&af=on&publishDateFrom=+&applSubmissionCloseDateFrom=+&updateDateFrom=+&currencyIdGeneral=-1&customerPlaceWithNested=on&customerPlace=5277381&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3&contractPriceCurrencyId=-1',
-        'Местоположение заказчика: ЯНАО': 'http://zakupki.gov.ru/epz/order/extendedsearch/rss.html?morphology=on&pageNumber=1&sortDirection=false&recordsPerPage=_50&showLotsInfoHidden=false&fz44=on&fz223=on&sortBy=PUBLISH_DATE&okpd2IdsWithNested=on&okpd2Ids=8878464%2C73143%2C8873973%2C8874206%2C8874258%2C8874364%2C8874459%2C8874515%2C8876509%2C8878352%2C8878358%2C8879355%2C8879469%2C8882959%2C8884073%2C8884146%2C8885411%2C8886517%2C8886816%2C8889732%2C8889778%2C8889783%2C8889838%2C8889845%2C8889870%2C8891050%2C9398582%2C9398623&okpd2IdsCodes=43.39.11%2C43.99.90.100%2C01.3%2C81.3%2C01.29%2C18.12%2C26.60%2C32.50%2C02.40.10%2C38.11.29%2C38.11.52%2C82.99.19%2C91.01.12%2C13.93.19.120%2C17.22.11.130%2C18.13.30.000%2C22.11.11.000%2C25.62.20.000%2C25.99.29.190%2C43.11.10.000%2C43.29.12.110%2C43.29.19.140%2C43.99.70.000%2C43.99.90.190%2C45.20.23.000%2C81.22.12.000%2C95.29.14.119%2C96.01.12.129&af=on&publishDateFrom=+&applSubmissionCloseDateFrom=+&updateDateFrom=+&currencyIdGeneral=-1&customerPlaceWithNested=on&customerPlace=5277382&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3&contractPriceCurrencyId=-1',
-        'Местоположение заказчика: Тюмень': 'http://zakupki.gov.ru/epz/order/extendedsearch/rss.html?morphology=on&pageNumber=1&sortDirection=false&recordsPerPage=_50&showLotsInfoHidden=false&fz44=on&fz223=on&sortBy=PUBLISH_DATE&okpd2IdsWithNested=on&okpd2Ids=8878464%2C73143%2C8873973%2C8874206%2C8874258%2C8874364%2C8874459%2C8874515%2C8876509%2C8878352%2C8878358%2C8879355%2C8879469%2C8882959%2C8884073%2C8884146%2C8885411%2C8886517%2C8886816%2C8889732%2C8889778%2C8889783%2C8889838%2C8889845%2C8889870%2C8891050%2C9398582%2C9398623&okpd2IdsCodes=43.39.11%2C43.99.90.100%2C01.3%2C81.3%2C01.29%2C18.12%2C26.60%2C32.50%2C02.40.10%2C38.11.29%2C38.11.52%2C82.99.19%2C91.01.12%2C13.93.19.120%2C17.22.11.130%2C18.13.30.000%2C22.11.11.000%2C25.62.20.000%2C25.99.29.190%2C43.11.10.000%2C43.29.12.110%2C43.29.19.140%2C43.99.70.000%2C43.99.90.190%2C45.20.23.000%2C81.22.12.000%2C95.29.14.119%2C96.01.12.129&af=on&publishDateFrom=+&applSubmissionCloseDateFrom=+&updateDateFrom=+&currencyIdGeneral=-1&customerPlaceWithNested=on&customerPlace=5277379&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3&contractPriceCurrencyId=-1',
-        'Управление закупок Тюменской области': 'https://zakupki.gov.ru/epz/order/extendedsearch/rss.html?morphology=on&pageNumber=1&sortDirection=false&recordsPerPage=_500&showLotsInfoHidden=false&fz44=on&fz223=on&sortBy=UPDATE_DATE&af=on&publishDateFrom=+&applSubmissionCloseDateFrom=+&currencyIdGeneral=-1&customerTitle=%D0%A3%D0%9F%D0%A0%D0%90%D0%92%D0%9B%D0%95%D0%9D%D0%98%D0%95+%D0%93%D0%9E%D0%A1%D0%A3%D0%94%D0%90%D0%A0%D0%A1%D0%A2%D0%92%D0%95%D0%9D%D0%9D%D0%AB%D0%A5+%D0%97%D0%90%D0%9A%D0%A3%D0%9F%D0%9E%D0%9A+%D0%A2%D0%AE%D0%9C%D0%95%D0%9D%D0%A1%D0%9A%D0%9E%D0%99+%D0%9E%D0%91%D0%9B%D0%90%D0%A1%D0%A2%D0%98&customerCode=01672000034&customerFz94id=629156&customerFz223id=187102&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3',
-        'ИНН: Управа ЦАО': 'https://zakupki.gov.ru/epz/order/extendedsearch/rss.html?searchString=&morphology=on&search-filter=&pageNumber=1&sortDirection=false&recordsPerPage=_500&showLotsInfoHidden=false&fz44=on&fz223=on&sortBy=UPDATE_DATE&okpd2Ids=&okpd2IdsCodes=&af=on&placingWaysList=&placingWaysList223=&placingChildWaysList=&publishDateFrom=+&publishDateTo=&applSubmissionCloseDateFrom=+&applSubmissionCloseDateTo=&priceFromGeneral=%D0%9C%D0%B8%D0%BD%D0%B8%D0%BC%D0%B0%D0%BB%D1%8C%D0%BD%D0%B0%D1%8F+%D1%86%D0%B5%D0%BD%D0%B0&priceFromGWS=%D0%9C%D0%B8%D0%BD%D0%B8%D0%BC%D0%B0%D0%BB%D1%8C%D0%BD%D0%B0%D1%8F+%D1%86%D0%B5%D0%BD%D0%B0&priceFromUnitGWS=%D0%9C%D0%B8%D0%BD%D0%B8%D0%BC%D0%B0%D0%BB%D1%8C%D0%BD%D0%B0%D1%8F+%D1%86%D0%B5%D0%BD%D0%B0&priceToGeneral=%D0%9C%D0%B0%D0%BA%D1%81%D0%B8%D0%BC%D0%B0%D0%BB%D1%8C%D0%BD%D0%B0%D1%8F+%D1%86%D0%B5%D0%BD%D0%B0&priceToGWS=%D0%9C%D0%B0%D0%BA%D1%81%D0%B8%D0%BC%D0%B0%D0%BB%D1%8C%D0%BD%D0%B0%D1%8F+%D1%86%D0%B5%D0%BD%D0%B0&priceToUnitGWS=%D0%9C%D0%B0%D0%BA%D1%81%D0%B8%D0%BC%D0%B0%D0%BB%D1%8C%D0%BD%D0%B0%D1%8F+%D1%86%D0%B5%D0%BD%D0%B0&currencyIdGeneral=-1&customerCode=01673000021&customerFz94id=774772&customerFz223id=&customerInn=&orderPlacement94_0=&orderPlacement94_1=&orderPlacement94_2=&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3&npaHidden=&restrictionsToPurchase44=',
-        'ИНН: Управа ВАО': 'https://zakupki.gov.ru/epz/order/extendedsearch/rss.html?morphology=on&pageNumber=1&sortDirection=false&recordsPerPage=_500&showLotsInfoHidden=false&fz44=on&fz223=on&sortBy=UPDATE_DATE&af=on&publishDateFrom=+&applSubmissionCloseDateFrom=+&currencyIdGeneral=-1&customerCode=01673000013&customerFz94id=638616&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3',
-        'ИНН: Управа ЛАО': 'https://zakupki.gov.ru/epz/order/extendedsearch/rss.html?morphology=on&pageNumber=1&sortDirection=false&recordsPerPage=_500&showLotsInfoHidden=false&fz44=on&fz223=on&sortBy=UPDATE_DATE&af=on&publishDateFrom=+&applSubmissionCloseDateFrom=+&currencyIdGeneral=-1&&customerCode=01673000030&customerFz94id=698477&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3',
-        'ИНН: Управа КАО': 'https://zakupki.gov.ru/epz/order/extendedsearch/rss.html?morphology=on&pageNumber=1&sortDirection=false&recordsPerPage=_500&showLotsInfoHidden=false&fz44=on&fz223=on&sortBy=UPDATE_DATE&af=on&publishDateFrom=+&applSubmissionCloseDateFrom=+&currencyIdGeneral=-1&customerCode=01673000019&customerFz94id=774752&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3',
-        'ИНН: Служба заказчика ЦАО': 'https://zakupki.gov.ru/epz/order/extendedsearch/rss.html?morphology=on&pageNumber=1&sortDirection=false&recordsPerPage=_50&showLotsInfoHidden=false&fz44=on&fz223=on&sortBy=UPDATE_DATE&af=on&currencyIdGeneral=-1&customerCode=03673000376&customerFz94id=791000&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3&contractPriceCurrencyId=-1',
-        'ИНН: Служба заказчика ВАО': 'https://zakupki.gov.ru/epz/order/extendedsearch/rss.html?morphology=on&pageNumber=1&sortDirection=false&recordsPerPage=_500&showLotsInfoHidden=false&fz44=on&fz223=on&sortBy=UPDATE_DATE&af=on&publishDateFrom=+&applSubmissionCloseDateFrom=+&currencyIdGeneral=-1&customerCode=03673000452&customerFz94id=829217&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3',
-        'ИНН: Служба заказчика ЛАО': 'https://zakupki.gov.ru/epz/order/extendedsearch/rss.html?morphology=on&pageNumber=1&sortDirection=false&recordsPerPage=_500&showLotsInfoHidden=false&fz44=on&fz223=on&sortBy=UPDATE_DATE&af=on&publishDateFrom=+&applSubmissionCloseDateFrom=+&currencyIdGeneral=-1&customerCode=03673000378&customerFz94id=803509&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3',
-        'ИНН: Служба заказчика КАО': 'https://zakupki.gov.ru/epz/order/extendedsearch/rss.html?morphology=on&pageNumber=1&sortDirection=false&recordsPerPage=_500&showLotsInfoHidden=false&fz44=on&fz223=on&sortBy=UPDATE_DATE&af=on&publishDateFrom=+&applSubmissionCloseDateFrom=+&currencyIdGeneral=-1&customerCode=03673000394&customerFz94id=808861&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3',
-        'ИНН: ЛесПаркХоз': 'https://zakupki.gov.ru/epz/order/extendedsearch/rss.html?morphology=on&pageNumber=1&sortDirection=false&recordsPerPage=_500&showLotsInfoHidden=false&fz44=on&fz223=on&sortBy=UPDATE_DATE&af=on&publishDateFrom=+&applSubmissionCloseDateFrom=+&currencyIdGeneral=-1&customerCode=03673000393&customerFz94id=808858&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3',
-        
-    }
-    for name, url in urls.items():
-        ids, states = get_states_from_url(url, ids, states)
-        print(name)
-
-    
-    return states, []
-
-if __name__ == '__main__':
-    states = []
-    ids = []
-    url = 'http://zakupki.gov.ru/epz/order/extendedsearch/rss.html?morphology=on&pageNumber=1&sortDirection=false&recordsPerPage=_50&showLotsInfoHidden=false&fz44=on&fz223=on&sortBy=PUBLISH_DATE&okpd2IdsWithNested=on&okpd2Ids=8878464%2C73143%2C8873973%2C8874206%2C8874258%2C8874364%2C8874459%2C8874515%2C8876509%2C8878352%2C8878358%2C8879355%2C8879469%2C8882959%2C8884073%2C8884146%2C8885411%2C8886517%2C8886816%2C8889732%2C8889778%2C8889783%2C8889838%2C8889845%2C8889870%2C8891050%2C9398582%2C9398623&okpd2IdsCodes=43.39.11%2C43.99.90.100%2C01.3%2C81.3&af=on&publishDateFrom=+&applSubmissionCloseDateFrom=+&updateDateFrom=+&currencyIdGeneral=-1&customerPlaceWithNested=on&delKladrIdsWithNested=on&delKladrIds=5277379&delKladrIdsCodes=72000000000&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3&contractPriceCurrencyId=-1'
-    get_states_from_url(url, ids, states)
-
-
+    return new_states, positions
