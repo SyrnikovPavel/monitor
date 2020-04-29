@@ -44,7 +44,7 @@ def add_new_card(unique_id):
         }
 
         place = state_dict['state'].place
-        label = places.get(place)
+        label = places.get(place, places.get('zakupki'))
 
         list_for_new = client.get_list('5b42f6d8787410608050c87e')
 
