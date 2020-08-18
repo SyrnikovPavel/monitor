@@ -123,6 +123,7 @@ def get_state_and_positions(filename):
         '26.60',
         '32.50',
         '02.40.10',
+        '14.12.30',
         '38.11.29',
         '38.11.52',
         '82.99.19',
@@ -150,7 +151,7 @@ def get_state_and_positions(filename):
         xml = fobj.read()
         soup = BeautifulSoup(xml, 'lxml')
         if need_add(soup, okpd2_codes):
-            place = soup.etp.code.getText()
+            place = soup.etp.find('name').getText()
             id_zak = soup.purchasenumber.getText()
             name_group_pos = soup.purchaseobjectinfo.getText()
             organization = soup.customer.fullname.getText()
@@ -192,7 +193,7 @@ def get_state_and_positions(filename):
             positions += [{
                     'unique_id': id_zak + '_' + place,
                     'name': position.find_all('name')[-1].getText() if len(position.find_all('name'))>1 else position.find_all('name')[0],
-                    'amount': int(position.quantity.value.getText()) if position.quantity.undefined is None else None,
+                    'amount': int(position.quantity.value.getText()) if position.quantity.undefined is not None else None,
                     'price': float(position.price.getText())
             } for position in soup.find_all('purchaseobject')]
     return state, positions

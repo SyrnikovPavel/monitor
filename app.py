@@ -6,6 +6,7 @@ from config import *
 from tables import *
 from monitor import get_one_tender, update_tenders_in_base
 import datetime
+import base64
 import threading
 
 
@@ -17,8 +18,8 @@ def get_html_for_trello(state_dict, template_file='/home/SyrnikovPavel/mysite/ot
     """Функция возвращает html данные для отправки"""
     html = open(template_file, encoding='utf8').read()
     template = Template(html)
-    return template.render(state_dict=state_dict)
-
+    return template.render(state_dict=state_dict)    
+ 
 
 def add_new_card(unique_id):
     """
@@ -81,6 +82,15 @@ def tender_item_save():
         return 'Sucsess'
     else:
         return "Что-то пошло не так"
+
+
+@app.route('/trello/add_attach/<card_id>', methods=['POST'])
+def add_attach(card_id):
+    data_decoding = request.json
+    client = TrelloClient(api_key=api_key,api_secret=api_secret)
+    card = client.get_card(card_id)
+    card.attach(name=data_decoding.get('name'), file=base64.urlsafe_b64decode(data_decoding.get('file')))
+    return 'Sucsess'
 
 
 @app.route('/tender/<unique_id>')

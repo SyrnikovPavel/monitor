@@ -11,6 +11,7 @@ from parse_ber import get_states_ber
 from parse_otc import get_states_otc
 from parse_zakupki import get_states_zakupki
 from parse_rts import get_states_rts
+from parse_techtorg import get_states_tektorg
 
 def find_actual_tenders():
     """Функция находит на всех площадках актуальные тендеры"""
@@ -25,7 +26,10 @@ def find_actual_tenders():
     actual_states_ber, actual_positions_ber = get_states_ber()
     actual_states += actual_states_ber
     actual_positions += actual_positions_ber
-
+    
+    actual_states_tektorg, actual_positions_tektorg = get_states_tektorg()
+    actual_states += actual_states_tektorg
+    actual_positions += actual_positions_tektorg
 
     actual_states_otc, actual_positions_otc = get_states_otc()
     actual_states += actual_states_otc
