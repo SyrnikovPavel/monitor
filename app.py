@@ -86,7 +86,7 @@ def tender_item_save():
 
 @app.route('/trello/add_attach/<card_id>', methods=['POST'])
 def add_attach(card_id):
-    data_decoding = json.loads(request.json)
+    data_decoding = request.json
     client = TrelloClient(api_key=api_key,api_secret=api_secret)
     card = client.get_card(card_id)
     card.attach(name=data_decoding.get('name'), file=base64.urlsafe_b64decode(data_decoding.get('file')))
