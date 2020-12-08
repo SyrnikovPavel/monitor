@@ -15,6 +15,15 @@ folder_zip = current_folder + '/notifications/zip_files/'
 folder_unzip = current_folder + '/notifications/unzip_files/'
 file_already = current_folder + '/already.txt'
 
+def replace_full_name(name: str):
+    "Замена длинных названий на более короткие"
+    name = name.replace('ГОСУДАРСТВЕННОЕ БЮДЖЕТНОЕ УЧРЕЖДЕНИЕ ЗДРАВООХРАНЕНИЯ', 'ГБУЗ')
+    name = name.replace('ТЮМЕНСКОЙ ОБЛАСТИ', 'ТО')
+    name = name.replace('ОБЛАСТНАЯ КЛИНИЧЕСКАЯ БОЛЬНИЦА', 'ОКБ')
+    name = name.replace('ОБЛАСТНАЯ БОЛЬНИЦА', 'ОБ')
+    name = name.replace('ГОСУДАРСТВЕННОЕ АВТОНОМНОЕ УЧРЕЖДЕНИЕ ЗДРАВООХРАНЕНИЯ', 'ГАУЗ')
+    name = name.replace('МНОГОПРОФИЛЬНЫЙ КЛИНИЧЕСКИЙ МЕДИЦИНСКИЙ ЦЕНТР', 'МКМЦ')  
+    return name
 
 def get_files_from_zipfile(filename: str):
     "Фукнция возвращает список файлов в архиве"
@@ -53,25 +62,31 @@ def update_zip_files_in_base(files: list):
             
     return 0
 
-def need_add(soup, okpd2_codes):
+def need_add(soup, okpd2_codes, stop_okpd2_codes, customer_codes):
     "Функция для определения - подходит ли нам эта закупка"
-    codes_okpd2 = list(set([x.code.getText() for x in soup.find_all('okpd2')]))
+    codes_okpd2 = list(set([x.code.getText() for x in soup.find_all('okpd2') if x.code is not None] + [x.find('okpdcode').getText() for x in soup.find_all('okpd2')  if x.find('okpdcode') is not None]))
     codes_okpd2 += list(set([x.code.getText()[:x.code.getText().find('-')] for x in soup.find_all('ktru')]))
     codes_okpd2 = list(set(codes_okpd2))
+    for x in stop_okpd2_codes:
+        if x in [y[:len(x)] for y in codes_okpd2]:
+            return False
     for x in okpd2_codes:
         if x in [y[:len(x)] for y in codes_okpd2]:
             return True
+    for x in soup.find_all('customerrequirement'):
+        if x.customer.regnum.getText() in customer_codes:
+            return True
     return False
 
-def get_ready_file(filename='already.txt'):
+def get_ready_file(filename='already2.txt'):
     "функция получает список уже готовых архивов"
     with open(filename, 'r', encoding='utf8') as file:
         return file.read().split('\n')[:-1]
     
-def write_ready_file(ready_file, filename='already.txt'):
+def write_ready_file(ready_file, filename='already2.txt'):
     "Функция записывает готовый архив в список"
     with open(filename, 'a', encoding='utf8') as file:
-        file.write(ready_file + '\n')
+        file.write(ready_file + '\t' + str(datetime.date.today()) + '\n')
     return 0
 
 class UserFTP(FTP):
@@ -113,6 +128,17 @@ class UserFTP(FTP):
 def get_state_and_positions(filename):
     "Функция для обработки файла и получения информации о закупке и позициях"
     
+    
+    with open(filename, encoding='utf8') as file:
+        result = file.read().replace('ns1:', '').replace('ns2:', '').replace('ns3:', '').replace('ns4:', '').replace('ns5:', '').replace('ns6:', '').replace('ns7:', '').replace('ns8:', '').replace('ns9:', '')
+
+    with open(filename, 'w', encoding='utf8') as file:
+        file.write(result)
+    
+    stop_okpd2_codes = [
+        '21.20', #лекарственные средства
+    ]
+    
     okpd2_codes = [
         '43.39.11',
         '43.99.90.100',
@@ -145,16 +171,32 @@ def get_state_and_positions(filename):
         '96.01.12.129',
     ]
     
+    customer_codes = [
+        '03672000118', #заводоуковск 12
+        '03672000080', #исетск 13
+        '10675000059', #медицинский город
+        '03672000133', #уват20
+        '01673000021', #управа ЦАО
+        '01673000019', #управа КАО
+        '01673000030', #управа ЛАО
+        '01673000013', #управа ВАО
+        '03673000376', #служба заказчика ЦАО
+        '03673000378', #служба заказчика ЛАО
+        '03673000394', #служба заказчика КАО
+        '03673000452', #служба заказчика ВАО
+
+    ]
+    
     state = {}
     positions = []
     with open(filename, 'r', encoding="utf8") as fobj:
         xml = fobj.read()
         soup = BeautifulSoup(xml, 'lxml')
-        if need_add(soup, okpd2_codes):
+        if need_add(soup, okpd2_codes, stop_okpd2_codes, customer_codes):
             place = soup.etp.find('name').getText()
             id_zak = soup.purchasenumber.getText()
-            name_group_pos = soup.purchaseobjectinfo.getText()
-            organization = soup.customer.fullname.getText()
+            name_group_pos = soup.purchaseobjectinfo.getText().replace('\r', ' ').replace('\n', ' ').replace('  ', ' ')
+            organization = ", ".join([replace_full_name(x.customer.fullname.getText()) for x in soup.find_all('customerrequirement')])
 
             if soup.startdate is not None:
                 start_time = soup.startdate.getText()
@@ -193,7 +235,7 @@ def get_state_and_positions(filename):
             positions += [{
                     'unique_id': id_zak + '_' + place,
                     'name': position.find_all('name')[-1].getText() if len(position.find_all('name'))>1 else position.find_all('name')[0],
-                    'amount': int(position.quantity.value.getText()) if position.quantity.value is not None else None,
+                    'amount': float(position.quantity.value.getText()) if position.quantity.value is not None else None,
                     'price': float(position.price.getText()) if position.price is not None else None
             } for position in soup.find_all('purchaseobject')]
     return state, positions
@@ -206,13 +248,13 @@ def get_states_zakupki():
     
     folder_zip = current_folder + '/notifications/zip_files/'
     folder_with_files = current_folder + '/notifications/unzip_files/'
-    file_already = current_folder + '/already.txt'
+    file_already = current_folder + '/already2.txt'
 
     ftp = UserFTP(UserFTP.host)
     ftp.login()
     files = ftp.get_all_zip_files_from_ftp(outfolder=folder_zip)
 
-    already_files = get_ready_file(file_already)
+    already_files = [x.split('\t')[0] for x in get_ready_file() if datetime.datetime.strptime(x.split('\t')[1], '%Y-%m-%d').date() < datetime.date.today() - datetime.timedelta(3)]
 
     files = [x for x in files if x not in already_files] # смотрим, чтобы файлы не повторялись
 
