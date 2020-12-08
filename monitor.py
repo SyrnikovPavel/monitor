@@ -31,9 +31,9 @@ def find_actual_tenders():
     actual_states += actual_states_tektorg
     actual_positions += actual_positions_tektorg
 
-    #actual_states_otc, actual_positions_otc = get_states_otc()
-    #actual_states += actual_states_otc
-    #actual_positions += actual_positions_otc
+    actual_states_otc, actual_positions_otc = get_states_otc()
+    actual_states += actual_states_otc
+    actual_positions += actual_positions_otc
     
     actual_states_zakupki, actual_positions_zakupki = get_states_zakupki()
     actual_states += actual_states_zakupki

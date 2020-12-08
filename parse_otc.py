@@ -85,14 +85,15 @@ def get_main_info(soup: BeautifulSoup):
     main_table = soup.find_all("table")[0]
     info = {}
     for tr in main_table.find_all('tr'):
-        key = tr.find_all('td')[0].getText().replace(' ', '')
-        value = tr.find_all('td')[1].getText().replace("\xa0", "").replace(",", ".").replace(
-            '\r', '').replace('\n', '').replace('  ', '').replace('(Все закупки организации)', '').replace(' руб.', '')
-        #print(key, value)
-        if value is not None and value != "":
-            if value[0] == " ":
-                value = value[1:]
-            info.update({key: value})
+        if len(tr.find_all('td')) != 0:
+            key = tr.find_all('td')[0].getText().replace(' ', '')
+            value = tr.find_all('td')[1].getText().replace("\xa0", "").replace(",", ".").replace(
+                '\r', '').replace('\n', '').replace('  ', '').replace('(Все закупки организации)', '').replace(' руб.', '')
+            #print(key, value)
+            if value is not None and value != "":
+                if value[0] == " ":
+                    value = value[1:]
+                info.update({key: value})
 
     info = {
         "name_group_pos": info['НаименованиеЗакупки'],
@@ -108,28 +109,29 @@ def get_date_info(soup: BeautifulSoup):
     Функция принимает на вход распарсенную страницу.
     На выходе выдает информацию по датам в формате dict.
     """
-    date_table = soup.find_all("table")[1]
+    date_table = soup.find_all("table")[2]
     info = {}
     for tr in date_table.find_all('tr'):
-        key = tr.find_all('td')[0].getText().replace(' ', '')
-        value = tr.find_all('td')[1].getText().replace("\xa0", "").replace(",", ".").replace(
-            '\r', '').replace('\n', '').replace('  ', '').replace('(Все закупки организации)', '').replace(' руб.', '')
-        
-        if value != "":
-            if value[0] == " ":
-                value = value[1:]
-            if value[-1] == " ":
-                value = value[:-1]
-        info.update({key: value})
-        key = tr.find_all('td')[2].getText().replace(' ', '')
-        value = tr.find_all('td')[3].getText().replace("\xa0", "").replace(",", ".").replace(
-            '\r', '').replace('\n', '').replace('  ', '').replace(' МСК', '')
-        if value != "":
-            if value[0] == " ":
-                value = value[1:]
-            if value[-1] == " ":
-                value = value[:-1]
-        info.update({key: value})
+        if len(tr.find_all('td')) != 0:
+            key = tr.find_all('td')[0].getText().replace(' ', '')
+            value = tr.find_all('td')[1].getText().replace("\xa0", "").replace(",", ".").replace(
+                '\r', '').replace('\n', '').replace('  ', '').replace('(Все закупки организации)', '').replace(' руб.', '')
+
+            if value != "":
+                if value[0] == " ":
+                    value = value[1:]
+                if value[-1] == " ":
+                    value = value[:-1]
+            info.update({key: value})
+            key = tr.find_all('td')[2].getText().replace(' ', '')
+            value = tr.find_all('td')[3].getText().replace("\xa0", "").replace(",", ".").replace(
+                '\r', '').replace('\n', '').replace('  ', '').replace(' МСК', '')
+            if value != "":
+                if value[0] == " ":
+                    value = value[1:]
+                if value[-1] == " ":
+                    value = value[:-1]
+            info.update({key: value})
 
     info = {
         "end_time": prepare_date(info['Срококончанияподачиоферт']) + datetime.timedelta(2/24),
@@ -148,8 +150,8 @@ def get_items(otc_number: int):
     positions = [{
         'unique_id': str(otc_number) + '_otc',
         'name': x['Name'], 
-        'amount': x['Count'], 
-        'price': x['Price']
+        'amount': int(x['Count']), 
+        'price': float(x['Price'])
     } for x in r.json()['Data']] 
     return positions
 
@@ -231,7 +233,7 @@ def get_active_tenders():
     if r.json()['ErrorMessage'] is None:
         real_count = r.json()['Result']['TotalCount']
         tender_numbers = [x['TenderId'] for x in r.json()['Result']['Tenders']]
-        assert len(tender_numbers) == real_count, 'Количество тендеров в поиске не совпадает с результатом'
+        # assert len(tender_numbers) == real_count, 'Количество тендеров в поиске не совпадает с результатом'
         return tender_numbers
     else:
         return []
@@ -302,23 +304,27 @@ def get_one_state(otc_number: int):
     'Функция возвращает данные по одной закупке'
     url_pattern = "https://market.otc.ru/ProductRequestGroup/Index/{0}"
     otc_url = url_pattern.format(otc_number)
-    r = requests.get(otc_url)
-    soup = BeautifulSoup(r.content, 'lxml')
-    main_info = get_main_info(soup)  # получение основных данных о закупке
-    date_info = get_date_info(soup)  # получение информации о датах закупки
-    state = merge_two_dicts(main_info, date_info)  # объединение двух словарей
-    state.update({
-        'unique_id': str(otc_number) + '_otc',
-        'place': 'otc',
-        'current_status': 'Активная',
-        'address': None,
-        'id_zak': otc_number,
-        'url': otc_url,
-        'send': False,
-        'add_trello': False,
-    })
-    position = get_items(otc_number)
-    return state, position
+    try:
+        r = requests.get(otc_url)
+        soup = BeautifulSoup(r.content, 'lxml')
+        main_info = get_main_info(soup)  # получение основных данных о закупке
+        date_info = get_date_info(soup)  # получение информации о датах закупки
+        state = merge_two_dicts(main_info, date_info)  # объединение двух словарей
+        state.update({
+            'unique_id': str(otc_number) + '_otc',
+            'place': 'otc',
+            'current_status': 'Активная',
+            'address': None,
+            'id_zak': otc_number,
+            'url': otc_url,
+            'send': False,
+            'add_trello': False,
+        })
+        position = get_items(otc_number)
+        return state, position
+    except IndexError as err:
+        traceback.print_exc()
+        print(otc_url)
 
 def get_states_otc():
 

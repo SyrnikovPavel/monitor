@@ -59,8 +59,8 @@ def get_states_portal():
                         positions += [{
                             'unique_id': str(item['number']) + '_portal',
                             'name': x['name'], 
-                            'amount': x['amount'], 
-                            'price': x['cost']
+                            'amount': int(x['amount']), 
+                            'price': float(x['cost'])
                         } for x in r.json()['items']] 
                 else:
                     r = requests.get('https://old.zakupki.mos.ru/api/Cssp/OfferAuction/GetEntity?id={0}'.format(item['number']))
@@ -69,12 +69,12 @@ def get_states_portal():
                             'unique_id': str(item['number']) + '_portal',
                             'name': x['offerAuctionItem'].get('offerSkuName'), 
                             'amount': int(x['currentValue']), 
-                            'price': x['costPerUnit']
+                            'price': float(x['costPerUnit'])
                         } if x['offerAuctionItem'] is not None else {
                             'unique_id': str(item['number']) + '_portal',
                             'name': 'Без названия', 
                             'amount': int(x['currentValue']), 
-                            'price': x['costPerUnit']
+                            'price': float(x['costPerUnit'])
                         } for x in r.json()['items']] 
                         
     unique_ids = []

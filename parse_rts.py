@@ -145,8 +145,8 @@ def get_states_rts():
                 positions += [{
                     'unique_id': str(item_data.get('Id')) + '_rts',
                     'name': x['Name'],
-                    'amount': x['Quantity'],
-                    'price': x['Price']
+                    'amount': int(x['Quantity']) if x['Quantity'] is not None else None,
+                    'price': float(x['Price']) if x['Price'] is not None else None
                 } for x in r.json()['data']['Products']]
                 time.sleep(1)
 

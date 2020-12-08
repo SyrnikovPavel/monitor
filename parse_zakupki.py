@@ -189,12 +189,12 @@ def get_state_and_positions(filename):
                 'send': False,
                 'add_trello': False,
             }
-            
+                
             positions += [{
                     'unique_id': id_zak + '_' + place,
                     'name': position.find_all('name')[-1].getText() if len(position.find_all('name'))>1 else position.find_all('name')[0],
-                    'amount': int(position.quantity.value.getText()) if position.quantity.undefined is not None else None,
-                    'price': float(position.price.getText())
+                    'amount': int(position.quantity.value.getText()) if position.quantity.value is not None else None,
+                    'price': float(position.price.getText()) if position.price is not None else None
             } for position in soup.find_all('purchaseobject')]
     return state, positions
     
