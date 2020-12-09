@@ -13,7 +13,7 @@ from config import current_folder
 
 folder_zip = current_folder + '/notifications/zip_files/'
 folder_unzip = current_folder + '/notifications/unzip_files/'
-file_already = current_folder + '/already.txt'
+file_already = current_folder + '/already2.txt'
 
 def replace_full_name(name: str):
     "Замена длинных названий на более короткие"
@@ -249,6 +249,8 @@ def get_states_zakupki():
     folder_zip = current_folder + '/notifications/zip_files/'
     folder_with_files = current_folder + '/notifications/unzip_files/'
     file_already = current_folder + '/already2.txt'
+    
+    print(file_already)
 
     ftp = UserFTP(UserFTP.host)
     ftp.login()
