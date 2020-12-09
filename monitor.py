@@ -12,6 +12,9 @@ from parse_otc import get_states_otc
 from parse_zakupki import get_states_zakupki
 from parse_rts import get_states_rts
 from parse_techtorg import get_states_tektorg
+from telelog import TeleLog
+
+
 
 def find_actual_tenders():
     """Функция находит на всех площадках актуальные тендеры"""
@@ -135,12 +138,16 @@ def send_tenders(states, current_folder):
 
 def main():
     """Функция для основной логики программы"""
-    actual_states, actual_positions = find_actual_tenders()
-    print(save_tender_on_server({'actual_states':actual_states, 'actual_positions':actual_positions}))
-    update_tenders_in_base(actual_states, actual_positions)
-    not_send_states = get_all_tenders_not_send()
-    if not_send_states != {}:
-        send_tenders(not_send_states, current_folder)
+    tg1 = TeleLog(api_telegram, chat_id_telegram)
+    try:
+        actual_states, actual_positions = find_actual_tenders()
+        print(save_tender_on_server({'actual_states':actual_states, 'actual_positions':actual_positions}))
+        update_tenders_in_base(actual_states, actual_positions)
+        not_send_states = get_all_tenders_not_send()
+        if not_send_states != {}:
+            send_tenders(not_send_states, current_folder)
+    except:
+        tg1.send_error()
 
 
 if __name__ == '__main__':
