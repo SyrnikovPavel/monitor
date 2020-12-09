@@ -68,7 +68,7 @@ def form_positions(items):
         }
         if state not in states:
             states.append(state)
-            positions += [{'unique_id': str(item['id']) + '_berezka','name': x['label']['<all_channels>']['<all_locales>'], 'amount': int(x['qty'].replace('.000', '')), 'price': None} if x['label'] != [] else {'unique_id': str(item['id']) + '_berezka','name': x['family']['labels']['ru_RU'], 'amount': int(x['qty'].replace('.000', '')), 'price': None} for x in item['products']]
+            positions += [{'unique_id': str(item['id']) + '_berezka','name': x['label']['<all_channels>']['<all_locales>'], 'amount': int(round(float(x['qty'].replace('.000', '')),0)), 'price': None} if x['label'] != [] else {'unique_id': str(item['id']) + '_berezka','name': x['family']['labels']['ru_RU'], 'amount': int(round(float(x['qty'].replace('.000', '')),0)), 'price': None} for x in item['products']]
     
     unique_ids = []
     new_states = []

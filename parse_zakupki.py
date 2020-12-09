@@ -256,7 +256,7 @@ def get_states_zakupki():
     ftp.login()
     files = ftp.get_all_zip_files_from_ftp(outfolder=folder_zip)
 
-    already_files = [x.split('\t')[0] for x in get_ready_file() if datetime.datetime.strptime(x.split('\t')[1], '%Y-%m-%d').date() < datetime.date.today() - datetime.timedelta(3)]
+    already_files = [x.split('\t')[0] for x in get_ready_file(file_already) if datetime.datetime.strptime(x.split('\t')[1], '%Y-%m-%d').date() < datetime.date.today() - datetime.timedelta(3)]
 
     files = [x for x in files if x not in already_files] # смотрим, чтобы файлы не повторялись
 
