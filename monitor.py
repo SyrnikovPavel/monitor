@@ -16,35 +16,53 @@ from telelog import TeleLog
 
 
 
-def find_actual_tenders():
+def find_actual_tenders(tg1):
     """Функция находит на всех площадках актуальные тендеры"""
 
     actual_states = []
     actual_positions = []
 
-    actual_states_portal, actual_positions_portal = get_states_portal()
-    actual_states += actual_states_portal
-    actual_positions += actual_positions_portal
+    try:
+        actual_states_portal, actual_positions_portal = get_states_portal()
+        actual_states += actual_states_portal
+        actual_positions += actual_positions_portal
+    except:
+        tg1.send_error(text="Ошибка Портал поставщиков")
 
-    actual_states_ber, actual_positions_ber = get_states_ber()
-    actual_states += actual_states_ber
-    actual_positions += actual_positions_ber
-    
-    actual_states_tektorg, actual_positions_tektorg = get_states_tektorg()
-    actual_states += actual_states_tektorg
-    actual_positions += actual_positions_tektorg
+    try:
+        actual_states_ber, actual_positions_ber = get_states_ber()
+        actual_states += actual_states_ber
+        actual_positions += actual_positions_ber
+    except:
+        tg1.send_error(text="Ошибка Березка")
+        
+    try:
+        actual_states_tektorg, actual_positions_tektorg = get_states_tektorg()
+        actual_states += actual_states_tektorg
+        actual_positions += actual_positions_tektorg
+    except:
+        tg1.send_error(text="Ошибка Текторг")
 
-    actual_states_otc, actual_positions_otc = get_states_otc()
-    actual_states += actual_states_otc
-    actual_positions += actual_positions_otc
+    try:
+        actual_states_otc, actual_positions_otc = get_states_otc()
+        actual_states += actual_states_otc
+        actual_positions += actual_positions_otc
+    except:
+        tg1.send_error(text="Ошибка ОТС")
     
-    actual_states_zakupki, actual_positions_zakupki = get_states_zakupki()
-    actual_states += actual_states_zakupki
-    actual_positions += actual_positions_zakupki
+    try:
+        actual_states_zakupki, actual_positions_zakupki = get_states_zakupki()
+        actual_states += actual_states_zakupki
+        actual_positions += actual_positions_zakupki
+    except:
+        tg1.send_error(text="Ошибка Закупки")
     
-    actual_states_rts, actual_positions_rts = get_states_rts()
-    actual_states += actual_states_rts
-    actual_positions += actual_positions_rts
+    try:
+        actual_states_rts, actual_positions_rts = get_states_rts()
+        actual_states += actual_states_rts
+        actual_positions += actual_positions_rts
+    except:
+        tg1.send_error(text="Ошибка РТС")
     
     n_actual_states = []
     for actual_state in actual_states:
@@ -140,7 +158,7 @@ def main():
     """Функция для основной логики программы"""
     tg1 = TeleLog(api_telegram, chat_id_telegram)
     try:
-        actual_states, actual_positions = find_actual_tenders()
+        actual_states, actual_positions = find_actual_tenders(tg1)
         print(save_tender_on_server({'actual_states':actual_states, 'actual_positions':actual_positions}))
         update_tenders_in_base(actual_states, actual_positions)
         not_send_states = get_all_tenders_not_send()

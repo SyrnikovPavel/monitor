@@ -22,7 +22,7 @@ class TeleLog:
         params = {'chat_id': str(self.chat_id), 'text': text}
         return self.make_request('sendMessage', params)
     
-    def send_error(self):
+    def send_error(self, text=''):
         
         tb = traceback.format_exc()
 
@@ -35,10 +35,11 @@ class TeleLog:
 
         type_log = "ERROR"
 
-        message = "{current_datetime}\n{type_log} in {current_file_name}\n{tb}".format(
+        message = "{current_datetime}\n{type_log} in {current_file_name}\n{text}\n{tb}".format(
             type_log=type_log, 
             current_file_name=current_file_name, 
             current_datetime=current_datetime.replace(microsecond=0), 
+            text=text,
             tb=tb
         )
 

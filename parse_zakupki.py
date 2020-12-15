@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from ftplib import FTP
+from ftplib import FTP, FTP_TLS
 from zipfile import ZipFile
 from bs4 import BeautifulSoup
 import time
@@ -250,9 +250,9 @@ def get_states_zakupki():
     folder_with_files = current_folder + '/notifications/unzip_files/'
     file_already = current_folder + '/already2.txt'
     
-    print(file_already)
 
-    ftp = UserFTP(UserFTP.host)
+
+    ftp = UserFTP(UserFTP.host, timeout=100)
     ftp.login()
     files = ftp.get_all_zip_files_from_ftp(outfolder=folder_zip)
 
