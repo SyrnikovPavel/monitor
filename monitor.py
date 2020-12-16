@@ -10,6 +10,7 @@ from parse_portal import get_states_portal
 from parse_ber import get_states_ber
 from parse_otc import get_states_otc
 from parse_zakupki import get_states_zakupki
+from parse_zakupki_223 import get_states_zakupki_223 
 from parse_rts import get_states_rts
 from parse_techtorg import get_states_tektorg
 from telelog import TeleLog
@@ -55,7 +56,14 @@ def find_actual_tenders(tg1):
         actual_states += actual_states_zakupki
         actual_positions += actual_positions_zakupki
     except:
-        tg1.send_error(text="Ошибка Закупки")
+        tg1.send_error(text="Ошибка Закупки 44")
+        
+    try:
+        actual_states_zakupki, actual_positions_zakupki = get_states_zakupki_223()
+        actual_states += actual_states_zakupki
+        actual_positions += actual_positions_zakupki
+    except:
+        tg1.send_error(text="Ошибка Закупки 223")
     
     try:
         actual_states_rts, actual_positions_rts = get_states_rts()
