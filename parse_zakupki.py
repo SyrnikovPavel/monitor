@@ -175,6 +175,8 @@ def get_state_and_positions(filename):
         '03672000118', #заводоуковск 12
         '03672000080', #исетск 13
         '10675000059', #медицинский город
+        '03672000036', #ярково
+        '03672000094', #ялуторовск
         '03672000133', #уват20
         '01673000021', #управа ЦАО
         '01673000019', #управа КАО
@@ -256,7 +258,7 @@ def get_states_zakupki():
     ftp.login()
     files = ftp.get_all_zip_files_from_ftp(outfolder=folder_zip)
 
-    already_files = [x.split('\t')[0] for x in get_ready_file(file_already) if datetime.datetime.strptime(x.split('\t')[1], '%Y-%m-%d').date() < datetime.date.today() - datetime.timedelta(3)]
+    already_files = [x.split('\t')[0] for x in get_ready_file(file_already) if datetime.datetime.strptime(x.split('\t')[1], '%Y-%m-%d').date() < datetime.date.today() - datetime.timedelta(10)]
 
     files = [x for x in files if x not in already_files] # смотрим, чтобы файлы не повторялись
 
@@ -286,5 +288,7 @@ def get_states_zakupki():
             if x not in new_states:
                 new_states.append(x)
                 unique_ids.append(x['unique_id'])
+    
+    [ print(x['id_zak'], x['organization']) for x in new_states]
     
     return new_states, positions
